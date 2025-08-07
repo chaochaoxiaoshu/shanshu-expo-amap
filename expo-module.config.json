@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ShanshuExpoMapModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.shanshuexpomap.ShanshuExpoMapModule"]
+  }
+}
