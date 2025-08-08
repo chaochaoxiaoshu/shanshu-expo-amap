@@ -2051,7 +2051,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: f3e842e6cb5a825b6918a74a38402ba1409411f8
   ReactCodegen: 6cb6e0d0b52471abc883541c76589d1c367c64c7
   ReactCommon: 1ab5451fc5da87c4cc4c3046e19a8054624ca763
-  ShanshuExpoMap: 103d6f40eb0cebc2bea12fa30d44f3b3b75b21f6
+  ShanshuExpoMap: 52ffeaeb24bf344f1e5d605789835e2ff5273096
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: adb397651e1c00672c12e9495babca70777e411e
 
