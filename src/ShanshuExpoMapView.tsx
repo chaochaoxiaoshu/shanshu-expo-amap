@@ -21,6 +21,9 @@ export default forwardRef<ShanshuExpoMapViewRef, ShanshuExpoMapViewProps>(
         },
         clearAllOverlays: () => {
           return nativeRef.current?.clearAllOverlays()
+        },
+        searchDrivingRoute: (options) => {
+          return nativeRef.current?.searchDrivingRoute(options)
         }
       }),
       []

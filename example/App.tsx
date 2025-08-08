@@ -22,7 +22,7 @@ export default function App() {
       <ShanshuExpoMapView
         ref={mapViewRef}
         style={{ width: '100%', height: '100%', flex: 1 }}
-        apiKey='351d8c618e0faf57ffc409a9c251354d'
+        apiKey={process.env.EXPO_PUBLIC_AMAP_API_KEY}
         center={{
           latitude: 31.230545,
           longitude: 121.473724
@@ -30,6 +30,9 @@ export default function App() {
         zoomLevel={16}
         onLoad={(event) => {
           console.log('🗺️ 地图加载成功:', event.nativeEvent)
+        }}
+        onRouteSearchDone={(event) => {
+          console.log('🗺️ 路线规划成功:', event.nativeEvent)
         }}
       />
       <View
@@ -50,6 +53,16 @@ export default function App() {
         <Button
           title='绘制折线'
           onPress={() => mapViewRef.current?.drawPolyline(exampleCoordates)}
+        />
+        <Button
+          title='规划驾车路线'
+          onPress={() => {
+            mapViewRef.current?.searchDrivingRoute({
+              origin: { latitude: 31.230545, longitude: 121.473724 },
+              destination: { latitude: 39.900896, longitude: 116.401049 },
+              showFieldType: 'polyline'
+            })
+          }}
         />
         <Button
           title='清除覆盖物'

@@ -22,6 +22,7 @@ public class ShanshuExpoMapModule: Module {
 
     View(ShanshuExpoMapView.self) {
       Events("onLoad")
+      Events("onRouteSearchDone")
 
       Prop("apiKey") { (view, apiKey: String) in
         if (view.apiKey != apiKey) {
@@ -57,6 +58,15 @@ public class ShanshuExpoMapModule: Module {
 
       AsyncFunction("clearAllOverlays") { (view: ShanshuExpoMapView) -> Bool in
         return view.clearAllOverlays()
+      }
+
+      AsyncFunction("searchDrivingRoute") { (view: ShanshuExpoMapView, options: [String: Any]) -> Bool in
+        guard let originDict = options["origin"] as? [String: Double],
+              let destinationDict = options["destination"] as? [String: Double] else {
+          return false
+        }
+        
+        return view.searchDrivingRoute(origin: originDict, destination: destinationDict, showFieldTypeString: options["showFieldType"] as? String)
       }
     }
   }
