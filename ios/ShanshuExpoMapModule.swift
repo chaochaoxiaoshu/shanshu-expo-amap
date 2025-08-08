@@ -1,48 +1,63 @@
 import ExpoModulesCore
 
 public class ShanshuExpoMapModule: Module {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
   public func definition() -> ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ShanshuExpoMap')` in JavaScript.
     Name("ShanshuExpoMap")
 
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
     Constants([
       "PI": Double.pi
     ])
 
-    // Defines event names that the module can send to JavaScript.
     Events("onChange")
 
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
     Function("hello") {
       return "Hello world! 👋"
     }
 
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
     AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
       self.sendEvent("onChange", [
         "value": value
       ])
     }
 
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
     View(ShanshuExpoMapView.self) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { (view: ShanshuExpoMapView, url: URL) in
-        if view.webView.url != url {
-          view.webView.load(URLRequest(url: url))
+      Events("onLoad")
+
+      Prop("apiKey") { (view, apiKey: String) in
+        if (view.apiKey != apiKey) {
+          view.apiKey = apiKey
         }
       }
 
-      Events("onLoad")
+      Prop("center") { (view, centerCoordinate: [String: Double]) in
+        if let latitude = centerCoordinate["latitude"], 
+           let longitude = centerCoordinate["longitude"] {
+          let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+          if let mapView = view.mapView {
+            mapView.setCenter(coordinate, animated: true)
+          } else {
+            // 如果 mapView 还没初始化，先存储坐标，等初始化后再设置
+            view.pendingCenter = coordinate
+          }
+        }
+      }
+
+      Prop("zoomLevel") { (view, zoomLevel: Int) in
+        if let mapView = view.mapView {
+          mapView.setZoomLevel(CGFloat(zoomLevel), animated: true)
+        } else {
+          // 如果 mapView 还没初始化，先存储缩放级别，等初始化后再设置
+          view.pendingZoomLevel = CGFloat(zoomLevel)
+        }
+      }
+
+      AsyncFunction("drawPolyline") { (view: ShanshuExpoMapView, coordinates: [[String: Double]]) -> Bool in
+        return view.drawPolyline(coordinates)
+      }
+
+      AsyncFunction("clearAllOverlays") { (view: ShanshuExpoMapView) -> Bool in
+        return view.clearAllOverlays()
+      }
     }
   }
 }

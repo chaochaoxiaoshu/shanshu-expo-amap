@@ -1,7 +1,7 @@
 {
-  "name": "shanshu-expo-map",
+  "name": "shanshu-expo-amap",
   "version": "0.1.0",
-  "description": "My new module",
+  "description": "高德地图 Expo 模块",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
@@ -21,13 +21,13 @@
     "shanshu-expo-map",
     "ShanshuExpoMap"
   ],
-  "repository": "https://github.com/chaochaoxiaoshu/shanshu-expo-map",
+  "repository": "https://github.com/chaochaoxiaoshu/shanshu-expo-amap",
   "bugs": {
-    "url": "https://github.com/chaochaoxiaoshu/shanshu-expo-map/issues"
+    "url": "https://github.com/chaochaoxiaoshu/shanshu-expo-amap/issues"
   },
   "author": "zhang.xin1@outlook.com <zhang.xin1@outlook.com> (https://github.com/chaochaoxiaoshu)",
   "license": "MIT",
-  "homepage": "https://github.com/chaochaoxiaoshu/shanshu-expo-map#readme",
+  "homepage": "https://github.com/chaochaoxiaoshu/shanshu-expo-amap#readme",
   "dependencies": {},
   "devDependencies": {
     "@types/react": "~19.0.0",
@@ -40,5 +40,5 @@
     "react": "*",
     "react-native": "*"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "pnpm@10.12.2+sha512.a32540185b964ee30bb4e979e405adc6af59226b438ee4cc19f9e8773667a66d302f5bfee60a39d3cac69e35e4b96e708a71dd002b7e9359c4112a1722ac323f"
 }

@@ -1,73 +1,61 @@
-import { useEvent } from 'expo';
-import ShanshuExpoMap, { ShanshuExpoMapView } from 'shanshu-expo-map';
-import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { useRef } from 'react'
+import { View, Button } from 'react-native'
+import {
+  ShanshuExpoMapView,
+  type ShanshuExpoMapViewRef
+} from 'shanshu-expo-map'
+
+const exampleCoordates = [
+  { latitude: 31.230545, longitude: 121.473724 },
+  { latitude: 31.228051, longitude: 121.467568 },
+  { latitude: 31.223257, longitude: 121.471266 },
+  { latitude: 31.227265, longitude: 121.479399 }
+]
 
 export default function App() {
-  const onChangePayload = useEvent(ShanshuExpoMap, 'onChange');
+  const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.container}>
-        <Text style={styles.header}>Module API Example</Text>
-        <Group name="Constants">
-          <Text>{ShanshuExpoMap.PI}</Text>
-        </Group>
-        <Group name="Functions">
-          <Text>{ShanshuExpoMap.hello()}</Text>
-        </Group>
-        <Group name="Async functions">
-          <Button
-            title="Set value"
-            onPress={async () => {
-              await ShanshuExpoMap.setValueAsync('Hello from JS!');
-            }}
-          />
-        </Group>
-        <Group name="Events">
-          <Text>{onChangePayload?.value}</Text>
-        </Group>
-        <Group name="Views">
-          <ShanshuExpoMapView
-            url="https://www.example.com"
-            onLoad={({ nativeEvent: { url } }) => console.log(`Loaded: ${url}`)}
-            style={styles.view}
-          />
-        </Group>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function Group(props: { name: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.group}>
-      <Text style={styles.groupHeader}>{props.name}</Text>
-      {props.children}
+    <View
+      style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}
+    >
+      <ShanshuExpoMapView
+        ref={mapViewRef}
+        style={{ width: '100%', height: '100%', flex: 1 }}
+        apiKey='351d8c618e0faf57ffc409a9c251354d'
+        center={{
+          latitude: 31.230545,
+          longitude: 121.473724
+        }}
+        zoomLevel={16}
+        onLoad={(event) => {
+          console.log('🗺️ 地图加载成功:', event.nativeEvent)
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: '100%',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          paddingVertical: 32,
+          paddingHorizontal: 20,
+          backgroundColor: 'rgba(255, 255, 255, 0.8)'
+        }}
+      >
+        <Button
+          title='绘制折线'
+          onPress={() => mapViewRef.current?.drawPolyline(exampleCoordates)}
+        />
+        <Button
+          title='清除覆盖物'
+          onPress={() => mapViewRef.current?.clearAllOverlays()}
+        />
+      </View>
     </View>
-  );
+  )
 }
-
-const styles = {
-  header: {
-    fontSize: 30,
-    margin: 20,
-  },
-  groupHeader: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
-  group: {
-    margin: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#eee',
-  },
-  view: {
-    flex: 1,
-    height: 200,
-  },
-};

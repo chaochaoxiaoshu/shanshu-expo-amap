@@ -1,4 +1,7 @@
 PODS:
+  - AMap3DMap (10.0.1000):
+    - AMapFoundation (>= 1.8.0)
+  - AMapFoundation (1.8.2)
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
   - EXConstants (17.1.7):
@@ -1717,6 +1720,7 @@ PODS:
     - React-perflogger (= 0.79.5)
     - React-utils (= 0.79.5)
   - ShanshuExpoMap (0.1.0):
+    - AMap3DMap (~> 10.0.600)
     - ExpoModulesCore
   - SocketRocket (0.7.1)
   - Yoga (0.0.0)
@@ -1805,6 +1809,8 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - AMap3DMap
+    - AMapFoundation
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -1967,6 +1973,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  AMap3DMap: 2896b8d63034aaf79720a402573362ca2fef0dec
+  AMapFoundation: 9885c48fc3a78fdfb84a0299a2293e56ea3c9fec
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXConstants: 98bcf0f22b820f9b28f9fee55ff2daededadd2f8
@@ -2043,7 +2051,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: f3e842e6cb5a825b6918a74a38402ba1409411f8
   ReactCodegen: 6cb6e0d0b52471abc883541c76589d1c367c64c7
   ReactCommon: 1ab5451fc5da87c4cc4c3046e19a8054624ca763
-  ShanshuExpoMap: d4da2ff213152c33e2d6eb569df11032ed19348d
+  ShanshuExpoMap: 103d6f40eb0cebc2bea12fa30d44f3b3b75b21f6
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: adb397651e1c00672c12e9495babca70777e411e
 
