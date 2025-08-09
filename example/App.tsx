@@ -15,6 +15,42 @@ const exampleCoordates = [
 export default function App() {
   const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
 
+  const handleDrawPolyline = () => {
+    mapViewRef.current?.drawPolyline(exampleCoordates)
+  }
+
+  const handleSearchDrivingRoute = async () => {
+    mapViewRef.current?.clearAllOverlays()
+    try {
+      const result = await mapViewRef.current?.searchDrivingRoute({
+        origin: { latitude: 31.230545, longitude: 121.473724 },
+        destination: { latitude: 39.900896, longitude: 116.401049 },
+        showFieldType: 'polyline'
+      })
+      console.log('🚗 驾车路线规划结果:', result)
+    } catch (error) {
+      console.log((error as Error).message)
+    }
+  }
+
+  const handleSearchWalkingRoute = async () => {
+    mapViewRef.current?.clearAllOverlays()
+    try {
+      const result = await mapViewRef.current?.searchWalkingRoute({
+        origin: { latitude: 31.230545, longitude: 121.473724 },
+        destination: { latitude: 31.223257, longitude: 121.471266 },
+        showFieldType: 'polyline'
+      })
+      console.log('🚶 步行路线规划结果:', result)
+    } catch (error) {
+      console.log((error as Error).message)
+    }
+  }
+
+  const handleClearAllOverlays = () => {
+    mapViewRef.current?.clearAllOverlays()
+  }
+
   return (
     <View
       style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}
@@ -30,9 +66,6 @@ export default function App() {
         zoomLevel={16}
         onLoad={(event) => {
           console.log('🗺️ 地图加载成功:', event.nativeEvent)
-        }}
-        onRouteSearchDone={(event) => {
-          console.log('🗺️ 路线规划成功:', event.nativeEvent)
         }}
       />
       <View
@@ -50,24 +83,10 @@ export default function App() {
           backgroundColor: 'rgba(255, 255, 255, 0.8)'
         }}
       >
-        <Button
-          title='绘制折线'
-          onPress={() => mapViewRef.current?.drawPolyline(exampleCoordates)}
-        />
-        <Button
-          title='规划驾车路线'
-          onPress={() => {
-            mapViewRef.current?.searchDrivingRoute({
-              origin: { latitude: 31.230545, longitude: 121.473724 },
-              destination: { latitude: 39.900896, longitude: 116.401049 },
-              showFieldType: 'polyline'
-            })
-          }}
-        />
-        <Button
-          title='清除覆盖物'
-          onPress={() => mapViewRef.current?.clearAllOverlays()}
-        />
+        <Button title='绘制折线' onPress={handleDrawPolyline} />
+        <Button title='规划驾车路线' onPress={handleSearchDrivingRoute} />
+        <Button title='规划步行路线' onPress={handleSearchWalkingRoute} />
+        <Button title='清除覆盖物' onPress={handleClearAllOverlays} />
       </View>
     </View>
   )
