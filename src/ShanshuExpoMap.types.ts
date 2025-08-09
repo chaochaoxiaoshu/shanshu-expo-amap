@@ -162,7 +162,7 @@ export interface OnRouteSearchDoneResult {
   route: AMapSearchObject
 }
 
-export interface ShanshuExpoMapModuleEvents {
+export type ShanshuExpoMapModuleEvents = {
   onChange: (params: ChangeEventPayload) => void
 }
 
