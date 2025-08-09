@@ -256,6 +256,7 @@ export interface ShanshuExpoMapViewRef {
 }
 
 export interface ShanshuExpoMapViewProps extends ViewProps {
+  ref?: React.Ref<ShanshuExpoMapViewRef>
   /**
    * 高德地图 apiKey
    */

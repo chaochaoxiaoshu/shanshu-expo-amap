@@ -5,9 +5,7 @@ import {
   ShanshuExpoMapViewRef
 } from './ShanshuExpoMap.types'
 
-const NativeView = requireNativeView('ShanshuExpoMap') as React.ComponentType<
-  ShanshuExpoMapViewProps & { ref?: React.Ref<ShanshuExpoMapViewRef> }
->
+const NativeView = requireNativeView<ShanshuExpoMapViewProps>('ShanshuExpoMap')
 
 export default forwardRef<ShanshuExpoMapViewRef, ShanshuExpoMapViewProps>(
   function ShanshuExpoMapView(props, ref) {
