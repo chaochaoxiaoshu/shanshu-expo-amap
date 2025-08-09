@@ -64,6 +64,7 @@ export default function App() {
           longitude: 121.473724
         }}
         zoomLevel={16}
+        mapType={0}
         onLoad={(event) => {
           console.log('🗺️ 地图加载成功:', event.nativeEvent)
         }}

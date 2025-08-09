@@ -37,6 +37,18 @@ export type ZoomLevel =
   | 19
 
 /**
+ * 地图类型
+ *
+ * - 0: 普通地图
+ * - 1: 卫星地图
+ * - 2: 夜间视图
+ * - 3: 导航视图
+ * - 4: 公交视图
+ * - 5: 导航夜间视图
+ */
+export type MapType = 0 | 1 | 2 | 3 | 4 | 5
+
+/**
  * 显示字段配置，默认为 none
  *
  * - none: 不返回扩展信息
@@ -269,6 +281,17 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
    * 地图的缩放级别的范围从3到19级，共17个级别
    */
   zoomLevel?: ZoomLevel
+  /**
+   * 地图类型
+   *
+   * - 0: 普通地图
+   * - 1: 卫星地图
+   * - 2: 夜间视图
+   * - 3: 导航视图
+   * - 4: 公交视图
+   * - 5: 导航夜间视图
+   */
+  mapType?: MapType
   /**
    * 地图加载成功事件
    */
