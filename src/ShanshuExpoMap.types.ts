@@ -3,13 +3,19 @@ import { ViewProps } from 'react-native'
 /**
  * 经纬度坐标
  */
-export type Coordinate = {
+export interface Coordinate {
+  /**
+   * 纬度
+   */
   latitude: number
+  /**
+   * 经度
+   */
   longitude: number
 }
 
 /**
- * 地图缩放等级
+ * 地图的缩放级别的范围从3到19级，共17个级别
  */
 export type ZoomLevel =
   | 3
@@ -52,7 +58,14 @@ export type AMapDrivingRouteShowFieldType =
   | 'newEnergy'
   | 'all'
 
-export type AMapPath = {
+export type AMapWalkingRouteShowFieldType =
+  | 'none'
+  | 'cost'
+  | 'navi'
+  | 'polyline'
+  | 'all'
+
+export interface AMapPath {
   distance: number
   duration: number
   stepCount: number
@@ -62,7 +75,7 @@ export type AMapPath = {
 /**
  * 公交换乘信息
  */
-export type AMapTransit = {
+export interface AMapTransit {
   /**
    * 此公交方案价格（单位：元）
    */
@@ -92,7 +105,7 @@ export type AMapTransit = {
 /**
  * 导航动作
  */
-export type AMapTransitNavi = {
+export interface AMapTransitNavi {
   action: string
   assistantAction: string
 }
@@ -100,7 +113,7 @@ export type AMapTransitNavi = {
 /**
  * 路径规划信息
  */
-export type AMapSearchObject = {
+export interface AMapSearchObject {
   /**
    * 起点坐标
    */
@@ -131,9 +144,13 @@ export type AMapSearchObject = {
   polyline?: string
 }
 
-export type OnLoadEventPayload = {}
+export interface OnLoadEventPayload {
+  message: string
+  target: number
+  timestamp: number
+}
 
-export type OnRouteSearchDoneEventPayload = {
+export interface OnRouteSearchDoneResult {
   success: boolean
   /**
    * 路径规划信息数目
@@ -145,11 +162,11 @@ export type OnRouteSearchDoneEventPayload = {
   route: AMapSearchObject
 }
 
-export type ShanshuExpoMapModuleEvents = {
+export interface ShanshuExpoMapModuleEvents {
   onChange: (params: ChangeEventPayload) => void
 }
 
-export type ChangeEventPayload = {
+export interface ChangeEventPayload {
   value: string
 }
 
@@ -158,7 +175,6 @@ export interface ShanshuExpoMapViewRef {
    * 绘制折线
    *
    * @param coordinates - 折线坐标数组
-   * @returns - 绘制成功返回 true，否则返回 false
    *
    * @example
    * ```tsx
@@ -171,41 +187,75 @@ export interface ShanshuExpoMapViewRef {
    * mapViewRef.current?.drawPolyline(exampleCoordates)
    * ```
    */
-  drawPolyline: (coordinates: Coordinate[]) => Promise<boolean> | undefined
+  drawPolyline: (coordinates: Coordinate[]) => Promise<void> | undefined
   /**
    * 清除所有覆盖物
-   *
-   * @returns - 清除成功返回 true，否则返回 false
    *
    * @example
    * ```tsx
    * mapViewRef.current?.clearAllOverlays()
    * ```
    */
-  clearAllOverlays: () => Promise<boolean> | undefined
+  clearAllOverlays: () => Promise<void> | undefined
   /**
    * 规划驾车路线
    *
    * @param origin - 起点坐标
    * @param destination - 终点坐标
    * @param showFieldType - 显示字段配置，详见 {@link AMapDrivingRouteShowFieldType}
-   * @returns - 规划成功返回 true，否则返回 false
+   * @returns 路线信息
    *
    * @example
    * ```tsx
-   * const exampleOrigin = { latitude: 31.230545, longitude: 121.473724 }
-   * const exampleDestination = { latitude: 31.228051, longitude: 121.467568 }
-   * mapViewRef.current?.searchDrivingRoute(exampleOrigin, exampleDestination)
+   * try {
+   *   const result = await mapViewRef.current?.searchDrivingRoute({
+   *     origin: { latitude: 31.230545, longitude: 121.473724 },
+   *     destination: { latitude: 39.900896, longitude: 116.401049 },
+   *     showFieldType: 'polyline'
+   *   })
+   *   console.log('🚗 驾车路线规划结果:', result)
+   * } catch (error) {
+   *   console.log((error as Error).message)
+   * }
    * ```
    */
   searchDrivingRoute: (options: {
     origin: Coordinate
     destination: Coordinate
     showFieldType?: AMapDrivingRouteShowFieldType
-  }) => Promise<boolean> | undefined
+  }) => Promise<OnRouteSearchDoneResult> | undefined
+  /**
+   * 规划步行路线
+   *
+   * @param origin - 起点坐标
+   * @param destination - 终点坐标
+   * @param showFieldType - 显示字段配置，详见 {@link AMapWalkingRouteShowFieldType}
+   * @returns 路线信息
+   *
+   * @example
+   * ```tsx
+   * try {
+   *   const exampleOrigin = { latitude: 31.230545, longitude: 121.473724 }
+   *   const exampleDestination = { latitude: 31.228051, longitude: 121.467568 }
+   *   const result = await mapViewRef.current?.searchWalkingRoute({
+   *     origin: exampleOrigin,
+   *     destination: exampleDestination,
+   *     showFieldType: 'polyline'
+   *   })
+   *   console.log('🚶 步行路线规划结果:', result)
+   * } catch (error) {
+   *   console.log((error as Error).message)
+   * }
+   * ```
+   */
+  searchWalkingRoute: (options: {
+    origin: Coordinate
+    destination: Coordinate
+    showFieldType?: AMapWalkingRouteShowFieldType
+  }) => Promise<OnRouteSearchDoneResult> | undefined
 }
 
-export type ShanshuExpoMapViewProps = {
+export interface ShanshuExpoMapViewProps extends ViewProps {
   /**
    * 高德地图 apiKey
    */
@@ -222,12 +272,4 @@ export type ShanshuExpoMapViewProps = {
    * 地图加载成功事件
    */
   onLoad?: (event: { nativeEvent: OnLoadEventPayload }) => void
-  /**
-   * 规划驾车路线完成事件
-   *
-   * @param event - 规划驾车路线完成事件
-   */
-  onRouteSearchDone?: (event: {
-    nativeEvent: OnRouteSearchDoneEventPayload
-  }) => void
-} & ViewProps
+}

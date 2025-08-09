@@ -24,6 +24,9 @@ export default forwardRef<ShanshuExpoMapViewRef, ShanshuExpoMapViewProps>(
         },
         searchDrivingRoute: (options) => {
           return nativeRef.current?.searchDrivingRoute(options)
+        },
+        searchWalkingRoute: (options) => {
+          return nativeRef.current?.searchWalkingRoute(options)
         }
       }),
       []

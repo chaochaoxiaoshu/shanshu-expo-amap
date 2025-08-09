@@ -26,6 +26,9 @@ class ShanshuExpoMapView: ExpoView {
       }
     }
   }
+
+  let drivingSearchHandler = PromiseDelegateHandler<[String: Any]>()
+  let walkingSearchHandler = PromiseDelegateHandler<[String: Any]>()
   
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -126,8 +129,8 @@ class ShanshuExpoMapView: ExpoView {
 
   // MARK: - 地图命令式方法
 
-  func drawPolyline(_ coordinates: [[String: Double]]) -> Bool {
-    guard let mapView = mapView else { return false }
+  func drawPolyline(_ coordinates: [[String: Double]]) {
+    guard let mapView = mapView else { return }
     
     var polylineCoords = [CLLocationCoordinate2D]()
   
@@ -139,53 +142,60 @@ class ShanshuExpoMapView: ExpoView {
     
     let polyline = MAPolyline(coordinates: &polylineCoords, count: UInt(polylineCoords.count))
     mapView.add(polyline)
-
-    return true
   }
 
-  func clearAllOverlays() -> Bool {
-    guard let mapView = mapView else { return false }
+  func clearAllOverlays() {
+    guard let mapView = mapView else { return }
     
     guard let overlays = mapView.overlays, !overlays.isEmpty else { 
-      return true 
+      return 
     }
     
     mapView.removeOverlays(overlays)
-    
-    return true
   }
 
-  func searchDrivingRoute(origin: [String: Double], destination: [String: Double], showFieldTypeString: String?) -> Bool {
-    guard let search = search else { return false }
+  func searchDrivingRoute(promise: Promise, origin: [String: Double], destination: [String: Double], showFieldTypeString: String?) {
+    drivingSearchHandler.begin(
+      resolve: { value in promise.resolve(value) },
+      reject: { code, message, error in
+          promise.reject(code, message)
+      }
+    )
+
+    guard let search = search else {
+      drivingSearchHandler.finishFailure(code: "1", message: "search 为空")
+      return
+    }
     
     guard let originLat = origin["latitude"],
           let originLng = origin["longitude"],
           let destLat = destination["latitude"],
           let destLng = destination["longitude"] else {
-      return false
+      drivingSearchHandler.finishFailure(code: "1", message: "无效的起点或终点坐标")
+      return
     }
 
     var showFieldType: AMapDrivingRouteShowFieldType? = nil
     if let showFieldTypeString = showFieldTypeString {
       switch showFieldTypeString {
       case "none":
-        showFieldType = .none
+        showFieldType = AMapDrivingRouteShowFieldType.none
       case "cost":
-        showFieldType = .cost
+        showFieldType = AMapDrivingRouteShowFieldType.cost
       case "tmcs":
-        showFieldType = .tmcs
+        showFieldType = AMapDrivingRouteShowFieldType.tmcs
       case "navi":
-        showFieldType = .navi
+        showFieldType = AMapDrivingRouteShowFieldType.navi
       case "cities":
-        showFieldType = .cities
+        showFieldType = AMapDrivingRouteShowFieldType.cities
       case "polyline":
-        showFieldType = .polyline
+        showFieldType = AMapDrivingRouteShowFieldType.polyline
       case "newEnergy":
-        showFieldType = .newEnergy
+        showFieldType = AMapDrivingRouteShowFieldType.newEnergy
       case "all":
-        showFieldType = .all
+        showFieldType = AMapDrivingRouteShowFieldType.all
       default:
-        showFieldType = .none
+        showFieldType = AMapDrivingRouteShowFieldType.none
       }
     }
     
@@ -195,7 +205,53 @@ class ShanshuExpoMapView: ExpoView {
     request.showFieldType = showFieldType ?? .none
     
     search.aMapDrivingV2RouteSearch(request)
-    return true
+  }
+
+  func searchWalkingRoute(promise: Promise, origin: [String: Double], destination: [String: Double], showFieldTypeString: String?) {
+    walkingSearchHandler.begin(
+      resolve: { value in promise.resolve(value) },
+      reject: { code, message, error in
+          promise.reject(code, message)
+      }
+    )
+
+    guard let search = search else {
+      walkingSearchHandler.finishFailure(code: "1", message: "search 为空")
+      return
+    }
+    
+    guard let originLat = origin["latitude"],
+          let originLng = origin["longitude"],
+          let destLat = destination["latitude"],
+          let destLng = destination["longitude"] else {
+      walkingSearchHandler.finishFailure(code: "1", message: "无效的起点或终点坐标")
+      return
+    }
+
+    var showFieldType: AMapWalkingRouteShowFieldType? = nil
+    if let showFieldTypeString = showFieldTypeString {
+      switch showFieldTypeString {
+      case "none":
+        showFieldType = AMapWalkingRouteShowFieldType.none
+      case "cost":
+        showFieldType = AMapWalkingRouteShowFieldType.cost
+      case "navi":
+        showFieldType = AMapWalkingRouteShowFieldType.navi
+      case "polyline":
+        showFieldType = AMapWalkingRouteShowFieldType.polyline
+      case "all":
+        showFieldType = AMapWalkingRouteShowFieldType.all
+      default:
+        showFieldType = AMapWalkingRouteShowFieldType.none
+      }
+    }
+    
+    let request = AMapWalkingRouteSearchRequest()
+    request.origin = AMapGeoPoint.location(withLatitude: CGFloat(originLat), longitude: CGFloat(originLng))
+    request.destination = AMapGeoPoint.location(withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
+    request.showFieldsType = showFieldType ?? .none
+    
+    search.aMapWalkingRouteSearch(request)
   }
 }
 
@@ -233,24 +289,29 @@ extension ShanshuExpoMapView: AMapSearchDelegate {
     guard let response = response,
           let route = response.route,
           let paths = route.paths,
-          let path = paths.first,
-          let polyline = path.polyline else {
-      onRouteSearchDone([
-        "success": false,
-        "count": 0,
-        "route": [:]
-      ])
+          let path = paths.first else {
+      if request is AMapDrivingCalRouteSearchRequest {
+        drivingSearchHandler.finishFailure(code: "1", message: "无效的响应数据")
+      } else if request is AMapWalkingRouteSearchRequest {
+        walkingSearchHandler.finishFailure(code: "1", message: "无效的响应数据")
+      }
       return
     }
     guard let mapView = mapView else { return }
 
-    onRouteSearchDone([
-      "success": true,
-      "count": response.count,
-      "route": serializeRouteResponse(route)
-    ])
-    
-    _ = clearAllOverlays()
+    if request is AMapDrivingCalRouteSearchRequest {
+      drivingSearchHandler.finishSuccess([
+        "success": true,
+        "count": response.count,
+        "route": serializeRouteResponse(route)
+      ])
+    } else if request is AMapWalkingRouteSearchRequest {
+      walkingSearchHandler.finishSuccess([
+        "success": true,
+        "count": response.count,
+        "route": serializeRouteResponse(route)
+      ])
+    }
 
     var coordinates = [CLLocationCoordinate2D]()
     if let polyline = path.polyline, !polyline.isEmpty {
@@ -263,11 +324,14 @@ extension ShanshuExpoMapView: AMapSearchDelegate {
         let polyline = MAPolyline(coordinates: &coordsArray, count: UInt(coordsArray.count))
         mapView.add(polyline)
     }
-    print("Route planning completed successfully")
   }
 
   func aMapSearchRequest(_ request: Any!, didFailWithError error: Error!) {
-    print("Route search failed with error: \(error?.localizedDescription ?? "Unknown error")")
+    if request is AMapDrivingCalRouteSearchRequest {
+      drivingSearchHandler.finishFailure(code: "1", message: "路线规划失败: \(error?.localizedDescription ?? "Unknown error")")
+    } else if request is AMapWalkingRouteSearchRequest {
+      walkingSearchHandler.finishFailure(code: "1", message: "路线规划失败: \(error?.localizedDescription ?? "Unknown error")")
+    }
   }
 }
 
@@ -318,7 +382,7 @@ extension ShanshuExpoMapView {
     if let transits = route.transits {
       var transitsArray: [[String: Any]] = []
       for transit in transits {
-        var transitData: [String: Any] = [
+        let transitData: [String: Any] = [
           "cost": Double(transit.cost),
           "duration": Double(transit.duration),
           "nightflag": transit.nightflag,
@@ -340,4 +404,40 @@ extension ShanshuExpoMapView {
     
     return routeData
   }
+}
+
+/// MARK: - Promise 委托中转器
+class PromiseDelegateHandler<ResultType> {
+    private var resolve: ((ResultType) -> Void)?
+    private var reject: ((String, String, Error?) -> Void)?
+
+    /// 开始一次 Promise 绑定
+    func begin(resolve: @escaping (ResultType) -> Void,
+               reject: @escaping (String, String, Error?) -> Void) {
+        self.resolve = resolve
+        self.reject = reject
+    }
+
+    /// 成功时调用
+    func finishSuccess(_ result: ResultType) {
+        resolve?(result)
+        clear()
+    }
+
+    /// 失败时调用
+    func finishFailure(code: String, message: String, error: Error? = nil) {
+        reject?(code, message, error)
+        clear()
+    }
+
+    /// 清理回调
+    private func clear() {
+        resolve = nil
+        reject = nil
+    }
+
+    /// 是否正在等待回调（可选）
+    var isPending: Bool {
+        return resolve != nil || reject != nil
+    }
 }

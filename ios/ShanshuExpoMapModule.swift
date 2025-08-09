@@ -22,7 +22,6 @@ public class ShanshuExpoMapModule: Module {
 
     View(ShanshuExpoMapView.self) {
       Events("onLoad")
-      Events("onRouteSearchDone")
 
       Prop("apiKey") { (view, apiKey: String) in
         if (view.apiKey != apiKey) {
@@ -52,21 +51,32 @@ public class ShanshuExpoMapModule: Module {
         }
       }
 
-      AsyncFunction("drawPolyline") { (view: ShanshuExpoMapView, coordinates: [[String: Double]]) -> Bool in
-        return view.drawPolyline(coordinates)
+      AsyncFunction("drawPolyline") { (view: ShanshuExpoMapView, coordinates: [[String: Double]]) in
+        view.drawPolyline(coordinates)
       }
 
-      AsyncFunction("clearAllOverlays") { (view: ShanshuExpoMapView) -> Bool in
-        return view.clearAllOverlays()
+      AsyncFunction("clearAllOverlays") { (view: ShanshuExpoMapView) in
+        view.clearAllOverlays()
       }
 
-      AsyncFunction("searchDrivingRoute") { (view: ShanshuExpoMapView, options: [String: Any]) -> Bool in
+      AsyncFunction("searchDrivingRoute") { (view: ShanshuExpoMapView, options: [String: Any], promise: Promise) -> Void in
         guard let originDict = options["origin"] as? [String: Double],
               let destinationDict = options["destination"] as? [String: Double] else {
-          return false
+          promise.reject("E_INVALID_COORDINATES", "Invalid origin or destination coordinates")
+          return
         }
         
-        return view.searchDrivingRoute(origin: originDict, destination: destinationDict, showFieldTypeString: options["showFieldType"] as? String)
+        view.searchDrivingRoute(promise: promise, origin: originDict, destination: destinationDict, showFieldTypeString: options["showFieldType"] as? String)
+      }
+
+      AsyncFunction("searchWalkingRoute") { (view: ShanshuExpoMapView, options: [String: Any], promise: Promise) -> Void in
+        guard let originDict = options["origin"] as? [String: Double],
+              let destinationDict = options["destination"] as? [String: Double] else {
+          promise.reject("E_INVALID_COORDINATES", "Invalid origin or destination coordinates")
+          return
+        }
+        
+        view.searchWalkingRoute(promise: promise, origin: originDict, destination: destinationDict, showFieldTypeString: options["showFieldType"] as? String)
       }
     }
   }
