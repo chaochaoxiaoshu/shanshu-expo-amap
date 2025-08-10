@@ -5,15 +5,17 @@ import {
   withInfoPlist
 } from 'expo/config-plugins'
 
-const withAMapConfig: ConfigPlugin<{ apiKey: string }> = (
-  config,
-  { apiKey }
-) => {
+const withAMapConfig: ConfigPlugin<{
+  apiKey?: { ios?: string; android?: string }
+}> = (config, { apiKey }) => {
   config = withInfoPlist(config, (config) => {
     const plist = config.modResults
 
     // 写入 apiKey
-    plist['AMAP_API_KEY'] = apiKey
+    const iosApiKey = apiKey?.ios
+    if (iosApiKey) {
+      plist['AMAP_API_KEY'] = iosApiKey
+    }
 
     // 添加 NSAppTransportSecurity 节点
     if (!plist.NSAppTransportSecurity) {
@@ -41,11 +43,14 @@ const withAMapConfig: ConfigPlugin<{ apiKey: string }> = (
       config.modResults
     )
 
-    AndroidConfig.Manifest.addMetaDataItemToMainApplication(
-      mainApplication,
-      'AMAP_API_KEY',
-      apiKey
-    )
+    const androidApiKey = apiKey?.android
+    if (androidApiKey) {
+      AndroidConfig.Manifest.addMetaDataItemToMainApplication(
+        mainApplication,
+        'AMAP_API_KEY',
+        androidApiKey
+      )
+    }
     return config
   })
 

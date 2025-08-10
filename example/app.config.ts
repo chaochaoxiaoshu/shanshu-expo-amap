@@ -30,6 +30,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: './assets/favicon.png'
   },
   plugins: [
-    ['../app.plugin.js', { apiKey: process.env.EXPO_PUBLIC_AMAP_API_KEY }]
+    [
+      '../app.plugin.js',
+      {
+        apiKey: {
+          ios: process.env.EXPO_PUBLIC_AMAP_API_KEY
+        }
+      }
+    ]
   ]
 })

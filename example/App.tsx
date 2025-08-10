@@ -57,12 +57,10 @@ export default function App() {
   }
 
   return (
-    <View
-      style={{ position: 'relative', width: '100%', height: '100%', flex: 1 }}
-    >
+    <View style={{ position: 'relative', flex: 1 }}>
       <ShanshuExpoMapView
         ref={mapViewRef}
-        style={{ width: '100%', height: '100%', flex: 1 }}
+        style={{ flex: 1 }}
         center={{
           latitude: 31.230545,
           longitude: 121.473724

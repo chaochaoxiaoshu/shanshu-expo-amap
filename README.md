@@ -1,93 +1,65 @@
 # shanshu-expo-amap
 
-用于 Expo 应用的高德地图 React Native 模块，支持 iOS 和 Android。
+> ⚠️ 目前仅支持 iOS
 
-## 功能特性
+`shanshu-expo-amap` 是一个 Expo 模块，允许你的 app 使用高德地图的 iOS 与 Android SDK，集成了 `AMapFoundation`, `AMap3DMap`, `AMapSearch` 与 `AMapLocation`。
 
-- 🗺️ 高德地图集成
-- 📱 支持 iOS、Android
-- ⚡ 基于 Expo 模块架构
-- 🎯 TypeScript 支持
-
-## 安装
+# 安装
 
 ```bash
-pnpm add shanshu-expo-amap
-# 或
-yarn add shanshu-expo-amap
-# 或
-npm install shanshu-expo-amap
+npx expo install shanshu-expo-amap
 ```
 
-## 使用方法
+# 配置
 
-### 基础用法
+在你的 `app.json` 或 `app.config.(ts/js)` 中添加以下配置：
 
-```tsx
-import React from 'react';
-import { View } from 'react-native';
-import { ShanshuExpoMapView } from 'shanshu-expo-amap';
-
-export default function App() {
-  return (
-    <View style={{ flex: 1 }}>
-      <ShanshuExpoMapView
-        style={{ flex: 1 }}
-        onLoad={() => console.log('地图加载完成')}
-      />
-    </View>
-  );
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "shanshu-expo-amap",
+        {
+          "apiKey": {
+            "ios": "YOUR_AMAP_API_KEY",
+            "android": "YOUR_AMAP_API_KEY"
+          }
+        }
+      ]
+    ]
+  }
 }
 ```
 
-## 开发
+# 使用方法
 
-### 环境要求
+如果你正在使用 iOS 模拟器或 Android 模拟器，请确保 [已启用位置功能](https://docs.expo.dev/versions/latest/sdk/location/#enable-emulator-location)。
 
-- Node.js >= 20
-- Expo CLI
-- React Native 开发环境
+```tsx
+import { useRef } from 'react'
+import ShanshuExpoMapModule, {
+  ShanshuExpoMapView,
+  type ShanshuExpoMapViewRef
+} from 'shanshu-expo-map'
 
-### 本地开发
+function App() {
+  const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
 
-```bash
-# 克隆仓库
-git clone https://github.com/chaochaoxiaoshu/shanshu-expo-amap.git
-cd shanshu-expo-amap
-
-# 安装依赖
-pnpm install
-
-# 构建模块
-pnpm run build
-
-# 运行示例
-cd example
-pnpm install
-pnpx expo run:ios
-pnpx expo run:android
+  return (
+    <ShanshuExpoMapView
+      ref={mapViewRef}
+      style={{ flex: 1 }}
+      center={{
+        latitude: 31.230545,
+        longitude: 121.473724
+      }}
+      zoomLevel={16}
+      mapType={0}
+      onLoad={(event) => {
+        console.log('🗺️ 地图加载成功:', event.nativeEvent)
+      }}
+    />
+  )
+}
 ```
-
-## 许可证
-
-MIT © [zhang.xin1@outlook.com](mailto:zhang.xin1@outlook.com)
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 打开 Pull Request
-
-## 链接
-
-- [GitHub 仓库](https://github.com/chaochaoxiaoshu/shanshu-expo-amap)
-- [问题反馈](https://github.com/chaochaoxiaoshu/shanshu-expo-amap/issues)
-- [高德地图开放平台](https://lbs.amap.com/)
-
----
-
-如果这个项目对你有帮助，请给个 ⭐ Star！
