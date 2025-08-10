@@ -5,18 +5,29 @@ import ExpoModulesCore
 import MAMapKit
 
 class ShanshuExpoMapView: ExpoView {
-  let mapView = MAMapView()
-  let searchAPI: AMapSearchAPI = AMapSearchAPI()
+  private let mapView = MAMapView()
+  private let searchAPI: AMapSearchAPI = AMapSearchAPI()
 
-  let onLoad = EventDispatcher()
+  private var polylineManager: PolylineManager!
+  private var defaultPolylineStyle = PolylineStyle(
+    color: UIColor(hex: "#2A6FDE"),
+    width: 6,
+    lineDash: false,
+    is3DArrowLine: false
+  )
 
-  let drivingSearchHandler = PromiseDelegateHandler<[String: Any]>()
-  let walkingSearchHandler = PromiseDelegateHandler<[String: Any]>()
+  private var manualCenter = false
+
+  private let onLoad = EventDispatcher()
+
+  private let drivingSearchHandler = PromiseDelegateHandler<[String: Any]>()
+  private let walkingSearchHandler = PromiseDelegateHandler<[String: Any]>()
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
     setupMapView()
+    initPolylineManager()
     setupSearchAPI()
     onLoad([
       "message": "Map loaded successfully",
@@ -27,16 +38,19 @@ class ShanshuExpoMapView: ExpoView {
   private func setupMapView() {
     mapView.delegate = self
     mapView.showsUserLocation = true
-    mapView.userTrackingMode = MAUserTrackingMode.none
-    mapView.showsCompass = true
+    mapView.userTrackingMode = .follow
     mapView.showsScale = true
 
-    let coordinate = CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
-    let region = MACoordinateRegion(
-      center: coordinate, span: MACoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
-    mapView.setRegion(region, animated: false)
+    // let coordinate = CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
+    // let region = MACoordinateRegion(
+    //   center: coordinate, span: MACoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
+    // mapView.setRegion(region, animated: false)
 
     addSubview(mapView)
+  }
+
+  private func initPolylineManager() {
+    polylineManager = PolylineManager(mapView: mapView)
   }
 
   private func setupSearchAPI() {
@@ -50,9 +64,14 @@ class ShanshuExpoMapView: ExpoView {
 
   // MARK: - 地图命令式方法
 
-  func setCenter(latitude: Double, longitude: Double) {
-    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-    mapView.setCenter(coordinate, animated: false)
+  func setCenter(latitude: Double?, longitude: Double?) {
+    if let latitude = latitude, let longitude = longitude {
+      let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+      mapView.setCenter(coordinate, animated: false)
+      manualCenter = true
+    } else {
+      manualCenter = false
+    }
   }
 
   func setZoomLevel(_ zoomLevel: Int) {
@@ -61,6 +80,18 @@ class ShanshuExpoMapView: ExpoView {
 
   func setMapType(_ mapType: Int) {
     mapView.mapType = MAMapType(rawValue: mapType) ?? .standard
+  }
+
+  func setShowUserLocation(_ showUserLocation: Bool) {
+    mapView.showsUserLocation = showUserLocation
+  }
+
+  func setUserTrackingMode(_ userTrackingMode: Int) {
+    mapView.userTrackingMode = MAUserTrackingMode(rawValue: userTrackingMode) ?? .follow
+  }
+
+  func setDefaultPolylineStyle(_ polylineStyle: PolylineStyle) {
+    defaultPolylineStyle = polylineStyle
   }
 
   func drawPolyline(_ coordinates: [[String: Double]]) {
@@ -74,6 +105,10 @@ class ShanshuExpoMapView: ExpoView {
 
     let polyline = MAPolyline(coordinates: &polylineCoords, count: UInt(polylineCoords.count))
     mapView.add(polyline)
+  }
+
+  func drawPolylineSegments(_ segments: [[String: Any]]) {
+    polylineManager.updateSegments(from: segments)
   }
 
   func clearAllOverlays() {
@@ -185,6 +220,7 @@ class ShanshuExpoMapView: ExpoView {
 
 // MARK: - MAMapViewDelegate
 extension ShanshuExpoMapView: MAMapViewDelegate {
+  // 请求位置权限回调
   public func mapViewRequireLocationAuth(_ mapView: MAMapView!) {
     if CLLocationManager.authorizationStatus() == .notDetermined {
       let locationManager = CLLocationManager()
@@ -192,11 +228,32 @@ extension ShanshuExpoMapView: MAMapViewDelegate {
     }
   }
 
+  // 用户位置更新的回调
+  func mapView(
+    _ mapView: MAMapView!, didUpdate userLocation: MAUserLocation!, updatingLocation: Bool
+  ) {
+    if updatingLocation && !manualCenter {
+      let coordinate = userLocation.coordinate
+      mapView.setCenter(coordinate, animated: true)
+    }
+  }
+
+  // 覆盖物渲染的回调
   func mapView(_ mapView: MAMapView!, rendererFor overlay: MAOverlay!) -> MAOverlayRenderer! {
     if overlay is MAPolyline {
-      let renderer = MAPolylineRenderer(overlay: overlay)
-      renderer?.strokeColor = UIColor.red
-      renderer?.lineWidth = 4
+      let renderer: MAPolylineRenderer = MAPolylineRenderer(overlay: overlay)
+      if let style = polylineManager.styleForPolyline(overlay as! MAPolyline) {
+        renderer.strokeColor = style.color
+        renderer.lineWidth = style.width
+        renderer.lineDashType = style.lineDash ? kMALineDashTypeSquare : kMALineDashTypeNone
+        renderer.is3DArrowLine = style.is3DArrowLine
+      } else {
+        renderer.strokeColor = defaultPolylineStyle.color ?? UIColor(hex: "#2A6FDE")
+        renderer.lineWidth = defaultPolylineStyle.width ?? 6
+        renderer.lineDashType =
+          defaultPolylineStyle.lineDash ? kMALineDashTypeSquare : kMALineDashTypeNone
+        renderer.is3DArrowLine = defaultPolylineStyle.is3DArrowLine ?? false
+      }
       return renderer
     }
     return nil
@@ -221,6 +278,7 @@ extension ShanshuExpoMapView: AMapSearchDelegate {
     return coordinates
   }
 
+  // 路线搜索完成的回调
   func onRouteSearchDone(_ request: AMapRouteSearchBaseRequest!, response: AMapRouteSearchResponse!)
   {
     guard let response = response,
@@ -263,6 +321,7 @@ extension ShanshuExpoMapView: AMapSearchDelegate {
     }
   }
 
+  // 路线搜索失败的回调
   func aMapSearchRequest(_ request: Any!, didFailWithError error: Error!) {
     if request is AMapDrivingCalRouteSearchRequest {
       drivingSearchHandler.finishFailure(

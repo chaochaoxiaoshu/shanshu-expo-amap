@@ -2,7 +2,7 @@
 
 > ⚠️ 目前仅支持 iOS
 
-`shanshu-expo-amap` 是一个 Expo 模块，允许你的 app 使用高德地图的 iOS 与 Android SDK，集成了 `AMapFoundation`, `AMap3DMap`, `AMapSearch` 与 `AMapLocation`。
+`shanshu-expo-amap` 是一个 Expo 模块，允许你的 app 使用高德地图 iOS 与 Android SDK，集成了 `AMapFoundation`, `AMap3DMap`, `AMapSearch` 与 `AMapLocation`。
 
 # 安装
 
@@ -32,6 +32,8 @@ npx expo install shanshu-expo-amap
 }
 ```
 
+然后执行 `npx expo prebuild` 生成原生项目。
+
 # 使用方法
 
 如果你正在使用 iOS 模拟器或 Android 模拟器，请确保 [已启用位置功能](https://docs.expo.dev/versions/latest/sdk/location/#enable-emulator-location)。
@@ -50,10 +52,6 @@ function App() {
     <ShanshuExpoMapView
       ref={mapViewRef}
       style={{ flex: 1 }}
-      center={{
-        latitude: 31.230545,
-        longitude: 121.473724
-      }}
       zoomLevel={16}
       mapType={0}
       onLoad={(event) => {

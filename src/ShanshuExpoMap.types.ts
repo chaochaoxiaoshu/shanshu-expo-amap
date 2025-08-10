@@ -49,6 +49,13 @@ export type ZoomLevel =
 export type MapType = 0 | 1 | 2 | 3 | 4 | 5
 
 /**
+ * - 0: 不追踪用户的location更新
+ * - 1: 追踪用户的location更新
+ * - 2: 追踪用户的location与heading更新
+ */
+export type UserTrackingMode = 0 | 1 | 2
+
+/**
  * 显示字段配置，默认为 none
  *
  * - none: 不返回扩展信息
@@ -76,6 +83,42 @@ export type AMapWalkingRouteShowFieldType =
   | 'navi'
   | 'polyline'
   | 'all'
+
+/**
+ * 折线线段样式
+ */
+export interface PolylineStyle {
+  /**
+   * 折线颜色，仅支持 hex 颜色值
+   */
+  color: string
+  /**
+   * 折线宽度
+   */
+  width: number
+  /**
+   * 是否虚线
+   */
+  lineDash: boolean
+  /**
+   * 是否启用 3d 箭头样式
+   */
+  is3DArrowLine: boolean
+}
+
+/**
+ * 折线线段
+ */
+export interface PolylineSegment {
+  /**
+   * 折线坐标点数组
+   */
+  coordinates: Coordinate[]
+  /**
+   * 折线样式
+   */
+  style: PolylineStyle
+}
 
 export interface AMapPath {
   distance: number
@@ -261,6 +304,32 @@ export interface ShanshuExpoMapViewRef {
    */
   drawPolyline: (coordinates: Coordinate[]) => Promise<void> | undefined
   /**
+   * 分段绘制折线
+   *
+   * @param segments - 折线段数组
+   *
+   * @example
+   * ```tsx
+   * const exampleSegments = [
+   *   {
+   *     coordinates: [
+   *       { latitude: 31.230545, longitude: 121.473724 },
+   *       { latitude: 31.227265, longitude: 121.479399 }
+   *     ],
+   *     style: {
+   *       color: "#FF0000",
+   *       width: 4,
+   *       lineDash: false
+   *     }
+   *   }
+   * ]
+   * mapViewRef.current?.drawPolylineSegments(exampleSegments)
+   * ```
+   */
+  drawPolylineSegments: (
+    segments: PolylineSegment[]
+  ) => Promise<void> | undefined
+  /**
    * 清除所有覆盖物
    *
    * @example
@@ -331,12 +400,28 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
   ref?: React.Ref<ShanshuExpoMapViewRef>
   /**
    * 地图平移时，缩放级别不变，可通过改变地图的中心点来移动地图
+   *
+   * 如果设置了 center，则地图会忽略用户位置更新
    */
   center?: Coordinate
   /**
    * 地图的缩放级别的范围从3到19级，共17个级别
    */
   zoomLevel?: ZoomLevel
+  /**
+   * 是否显示用户位置，默认为 true
+   */
+  showUserLocation?: boolean
+  /**
+   * 用户位置更新模式，默认为 1
+   *
+   * - 0: 不追踪用户的location更新
+   * - 1: 追踪用户的location更新
+   * - 2: 追踪用户的location与heading更新
+   *
+   * 如果设置了 center，则地图会忽略用户位置更新
+   */
+  userTrackingMode?: UserTrackingMode
   /**
    * 地图类型
    *
@@ -348,6 +433,10 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
    * - 5: 导航夜间视图
    */
   mapType?: MapType
+  /**
+   * 默认折线样式，除了分段绘制折线以外的折线（包括路径规划）都会使用这个样式
+   */
+  defaultPolylineStyle?: PolylineStyle
   /**
    * 地图加载成功事件
    */

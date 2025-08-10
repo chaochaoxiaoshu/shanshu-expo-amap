@@ -17,6 +17,9 @@ export default forwardRef<ShanshuExpoMapViewRef, ShanshuExpoMapViewProps>(
         drawPolyline: (coordinates) => {
           return nativeRef.current?.drawPolyline(coordinates)
         },
+        drawPolylineSegments: (segments) => {
+          return nativeRef.current?.drawPolylineSegments(segments)
+        },
         clearAllOverlays: () => {
           return nativeRef.current?.clearAllOverlays()
         },

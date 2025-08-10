@@ -24,6 +24,49 @@ export default function App() {
     mapViewRef.current?.drawPolyline(exampleCoordates)
   }
 
+  const handleDrawPolylineSegments = () => {
+    mapViewRef.current?.clearAllOverlays()
+    const exampleSegments = [
+      {
+        coordinates: [
+          { latitude: 31.230545, longitude: 121.473724 },
+          { latitude: 31.228051, longitude: 121.467568 }
+        ],
+        style: {
+          color: '#FF0000',
+          width: 4,
+          lineDash: false,
+          is3DArrowLine: false
+        }
+      },
+      {
+        coordinates: [
+          { latitude: 31.228051, longitude: 121.467568 },
+          { latitude: 31.223257, longitude: 121.471266 }
+        ],
+        style: {
+          color: '#00FF00',
+          width: 6,
+          lineDash: false,
+          is3DArrowLine: false
+        }
+      },
+      {
+        coordinates: [
+          { latitude: 31.223257, longitude: 121.471266 },
+          { latitude: 31.227265, longitude: 121.479399 }
+        ],
+        style: {
+          color: '#00FF00',
+          width: 6,
+          lineDash: true,
+          is3DArrowLine: false
+        }
+      }
+    ]
+    mapViewRef.current?.drawPolylineSegments(exampleSegments)
+  }
+
   const handleSearchDrivingRoute = async () => {
     mapViewRef.current?.clearAllOverlays()
     try {
@@ -67,6 +110,12 @@ export default function App() {
         }}
         zoomLevel={16}
         mapType={0}
+        defaultPolylineStyle={{
+          color: '#43A969',
+          width: 6,
+          lineDash: true,
+          is3DArrowLine: false
+        }}
         onLoad={(event) => {
           console.log('🗺️ 地图加载成功:', event.nativeEvent)
         }}
@@ -88,6 +137,7 @@ export default function App() {
       >
         <Button title='获取定位' onPress={getLocation} />
         <Button title='绘制折线' onPress={handleDrawPolyline} />
+        <Button title='分段绘制折线' onPress={handleDrawPolylineSegments} />
         <Button title='规划驾车路线' onPress={handleSearchDrivingRoute} />
         <Button title='规划步行路线' onPress={handleSearchWalkingRoute} />
         <Button title='清除覆盖物' onPress={handleClearAllOverlays} />

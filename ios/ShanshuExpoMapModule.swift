@@ -12,7 +12,6 @@ public class ShanshuExpoMapModule: Module {
 
     OnCreate {
       let apiKey = Bundle.main.object(forInfoDictionaryKey: "AMAP_API_KEY") as? String
-      print("apiKey: \(apiKey ?? "")")
       AMapServices.shared().apiKey = apiKey
       MAMapView.updatePrivacyAgree(AMapPrivacyAgreeStatus.didAgree)
       MAMapView.updatePrivacyShow(
@@ -70,6 +69,8 @@ public class ShanshuExpoMapModule: Module {
           let longitude = centerCoordinate["longitude"]
         {
           view.setCenter(latitude: latitude, longitude: longitude)
+        } else {
+          view.setCenter(latitude: nil, longitude: nil)
         }
       }
 
@@ -81,8 +82,27 @@ public class ShanshuExpoMapModule: Module {
         view.setMapType(mapType)
       }
 
+      Prop("showUserLocation") { (view, showUserLocation: Bool) in
+        view.setShowUserLocation(showUserLocation)
+      }
+
+      Prop("userTrackingMode") { (view, userTrackingMode: Int) in
+        view.setUserTrackingMode(userTrackingMode)
+      }
+
+      Prop("defaultPolylineStyle") { (view, style: [String: Any]) in
+        if let polylineStyle = PolylineStyle.from(dictionary: style) {
+          view.setDefaultPolylineStyle(polylineStyle)
+        }
+      }
+
       AsyncFunction("drawPolyline") { (view: ShanshuExpoMapView, coordinates: [[String: Double]]) in
         view.drawPolyline(coordinates)
+      }
+
+      AsyncFunction("drawPolylineSegments") {
+        (view: ShanshuExpoMapView, segments: [[String: Any]]) in
+        view.drawPolylineSegments(segments)
       }
 
       AsyncFunction("clearAllOverlays") { (view: ShanshuExpoMapView) in
