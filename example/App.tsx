@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { View, Button } from 'react-native'
-import {
+import ShanshuExpoMapModule, {
   ShanshuExpoMapView,
   type ShanshuExpoMapViewRef
 } from 'shanshu-expo-map'
@@ -11,6 +11,11 @@ const exampleCoordates = [
   { latitude: 31.223257, longitude: 121.471266 },
   { latitude: 31.227265, longitude: 121.479399 }
 ]
+
+async function getLocation() {
+  const location = await ShanshuExpoMapModule.requestLocation()
+  console.log('location', location)
+}
 
 export default function App() {
   const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
@@ -58,7 +63,6 @@ export default function App() {
       <ShanshuExpoMapView
         ref={mapViewRef}
         style={{ width: '100%', height: '100%', flex: 1 }}
-        apiKey={process.env.EXPO_PUBLIC_AMAP_API_KEY}
         center={{
           latitude: 31.230545,
           longitude: 121.473724
@@ -84,6 +88,7 @@ export default function App() {
           backgroundColor: 'rgba(255, 255, 255, 0.8)'
         }}
       >
+        <Button title='获取定位' onPress={getLocation} />
         <Button title='绘制折线' onPress={handleDrawPolyline} />
         <Button title='规划驾车路线' onPress={handleSearchDrivingRoute} />
         <Button title='规划步行路线' onPress={handleSearchWalkingRoute} />

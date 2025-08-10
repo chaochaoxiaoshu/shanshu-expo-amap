@@ -5,28 +5,10 @@ import ExpoModulesCore
 import MAMapKit
 
 class ShanshuExpoMapView: ExpoView {
-
-  var mapView: MAMapView?
-  var search: AMapSearchAPI?
+  let mapView = MAMapView()
+  let searchAPI: AMapSearchAPI = AMapSearchAPI()
 
   let onLoad = EventDispatcher()
-  let onRouteSearchDone = EventDispatcher()
-
-  // 存储待设置的属性（当 mapView 还未初始化时）
-  var pendingCenter: CLLocationCoordinate2D?
-  var pendingZoomLevel: CGFloat?
-  var pendingMapType: Int?
-
-  var apiKey: String? {
-    // apiKey 发生变化时，重新初始化 SDK 并重新创建地图视图（一般不会变）
-    didSet {
-      if let apiKey = apiKey, apiKey != oldValue {
-        initializeSDK(with: apiKey)
-        initializeSearch(with: apiKey)
-        recreateMapView()
-      }
-    }
-  }
 
   let drivingSearchHandler = PromiseDelegateHandler<[String: Any]>()
   let walkingSearchHandler = PromiseDelegateHandler<[String: Any]>()
@@ -34,65 +16,15 @@ class ShanshuExpoMapView: ExpoView {
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
-  }
-
-  private func recreateMapView() {
-    // 如果有地图视图，从父视图中移除
-    mapView?.removeFromSuperview()
-
-    // 重新创建地图视图
     setupMapView()
-
-    // 应用待设置的属性
-    applyPendingProperties()
-
-    // 通知布局需要重新计算
-    setNeedsLayout()
-
-    // 发送地图加载完成事件
+    setupSearchAPI()
     onLoad([
       "message": "Map loaded successfully",
       "timestamp": Date().timeIntervalSince1970,
     ])
   }
 
-  private var sdkInitialized = false
-  private var currentApiKey: String?
-
-  // 根据 apiKey 初始化 SDK
-  private func initializeSDK(with apiKey: String) {
-    if sdkInitialized && currentApiKey == apiKey {
-      return
-    }
-
-    AMapServices.shared().apiKey = apiKey
-    MAMapView.updatePrivacyAgree(AMapPrivacyAgreeStatus.didAgree)
-    MAMapView.updatePrivacyShow(
-      AMapPrivacyShowStatus.didShow, privacyInfo: AMapPrivacyInfoStatus.didContain)
-    AMapServices.shared().enableHTTPS = true
-
-    sdkInitialized = true
-    currentApiKey = apiKey
-  }
-
-  private func initializeSearch(with apiKey: String) {
-    if search != nil {
-      return
-    }
-
-    search = AMapSearchAPI()
-
-    guard let search = search else { return }
-
-    search.delegate = self
-  }
-
-  // 创建并配置地图视图
   private func setupMapView() {
-    mapView = MAMapView()
-
-    guard let mapView = mapView else { return }
-
     mapView.delegate = self
     mapView.showsUserLocation = true
     mapView.userTrackingMode = MAUserTrackingMode.none
@@ -107,64 +39,31 @@ class ShanshuExpoMapView: ExpoView {
     addSubview(mapView)
   }
 
-  // 应用待设置的属性
-  private func applyPendingProperties() {
-    guard let mapView = mapView else { return }
-
-    // 设置待设置的中心点
-    if let pendingCenter = pendingCenter {
-      mapView.setCenter(pendingCenter, animated: false)
-      self.pendingCenter = nil
-    }
-
-    // 设置待设置的缩放级别
-    if let pendingZoomLevel = pendingZoomLevel {
-      mapView.setZoomLevel(pendingZoomLevel, animated: false)
-      self.pendingZoomLevel = nil
-    }
-
-    // 设置待设置的地图类型
-    if let pendingMapType = pendingMapType {
-      mapView.mapType = MAMapType(rawValue: pendingMapType) ?? .standard
-      self.pendingMapType = nil
-    }
-  }
-
-  func setCenter(latitude: Double, longitude: Double) {
-    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-    if let mapView = mapView {
-      mapView.setCenter(coordinate, animated: false)
-    } else {
-      pendingCenter = coordinate
-    }
-  }
-
-  func setZoomLevel(_ zoomLevel: Int) {
-    if let mapView = mapView {
-      mapView.setZoomLevel(CGFloat(zoomLevel), animated: false)
-    } else {
-      pendingZoomLevel = CGFloat(zoomLevel)
-    }
-  }
-
-  func setMapType(_ mapType: Int) {
-    if let mapView = mapView {
-      mapView.mapType = MAMapType(rawValue: mapType) ?? .standard
-    } else {
-      pendingMapType = mapType
-    }
+  private func setupSearchAPI() {
+    searchAPI.delegate = self
   }
 
   override func layoutSubviews() {
     super.layoutSubviews()
-    mapView?.frame = bounds
+    mapView.frame = bounds
   }
 
   // MARK: - 地图命令式方法
 
-  func drawPolyline(_ coordinates: [[String: Double]]) {
-    guard let mapView = mapView else { return }
+  func setCenter(latitude: Double, longitude: Double) {
+    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    mapView.setCenter(coordinate, animated: false)
+  }
 
+  func setZoomLevel(_ zoomLevel: Int) {
+    mapView.setZoomLevel(CGFloat(zoomLevel), animated: false)
+  }
+
+  func setMapType(_ mapType: Int) {
+    mapView.mapType = MAMapType(rawValue: mapType) ?? .standard
+  }
+
+  func drawPolyline(_ coordinates: [[String: Double]]) {
     var polylineCoords = [CLLocationCoordinate2D]()
 
     for coord in coordinates {
@@ -178,13 +77,7 @@ class ShanshuExpoMapView: ExpoView {
   }
 
   func clearAllOverlays() {
-    guard let mapView = mapView else { return }
-
-    guard let overlays = mapView.overlays, !overlays.isEmpty else {
-      return
-    }
-
-    mapView.removeOverlays(overlays)
+    mapView.removeOverlays(mapView.overlays)
   }
 
   func searchDrivingRoute(
@@ -197,11 +90,6 @@ class ShanshuExpoMapView: ExpoView {
         promise.reject(code, message)
       }
     )
-
-    guard let search = search else {
-      drivingSearchHandler.finishFailure(code: "1", message: "search 为空")
-      return
-    }
 
     guard let originLat = origin["latitude"],
       let originLng = origin["longitude"],
@@ -243,7 +131,7 @@ class ShanshuExpoMapView: ExpoView {
       withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
     request.showFieldType = showFieldType ?? .none
 
-    search.aMapDrivingV2RouteSearch(request)
+    searchAPI.aMapDrivingV2RouteSearch(request)
   }
 
   func searchWalkingRoute(
@@ -256,11 +144,6 @@ class ShanshuExpoMapView: ExpoView {
         promise.reject(code, message)
       }
     )
-
-    guard let search = search else {
-      walkingSearchHandler.finishFailure(code: "1", message: "search 为空")
-      return
-    }
 
     guard let originLat = origin["latitude"],
       let originLng = origin["longitude"],
@@ -296,12 +179,19 @@ class ShanshuExpoMapView: ExpoView {
       withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
     request.showFieldsType = showFieldType ?? .none
 
-    search.aMapWalkingRouteSearch(request)
+    searchAPI.aMapWalkingRouteSearch(request)
   }
 }
 
 // MARK: - MAMapViewDelegate
 extension ShanshuExpoMapView: MAMapViewDelegate {
+  public func mapViewRequireLocationAuth(_ mapView: MAMapView!) {
+    if CLLocationManager.authorizationStatus() == .notDetermined {
+      let locationManager = CLLocationManager()
+      locationManager.requestAlwaysAuthorization()
+    }
+  }
+
   func mapView(_ mapView: MAMapView!, rendererFor overlay: MAOverlay!) -> MAOverlayRenderer! {
     if overlay is MAPolyline {
       let renderer = MAPolylineRenderer(overlay: overlay)
@@ -345,7 +235,6 @@ extension ShanshuExpoMapView: AMapSearchDelegate {
       }
       return
     }
-    guard let mapView = mapView else { return }
 
     if request is AMapDrivingCalRouteSearchRequest {
       drivingSearchHandler.finishSuccess([
@@ -453,43 +342,5 @@ extension ShanshuExpoMapView {
     }
 
     return routeData
-  }
-}
-
-/// MARK: - Promise 委托中转器
-class PromiseDelegateHandler<ResultType> {
-  private var resolve: ((ResultType) -> Void)?
-  private var reject: ((String, String, Error?) -> Void)?
-
-  /// 开始一次 Promise 绑定
-  func begin(
-    resolve: @escaping (ResultType) -> Void,
-    reject: @escaping (String, String, Error?) -> Void
-  ) {
-    self.resolve = resolve
-    self.reject = reject
-  }
-
-  /// 成功时调用
-  func finishSuccess(_ result: ResultType) {
-    resolve?(result)
-    clear()
-  }
-
-  /// 失败时调用
-  func finishFailure(code: String, message: String, error: Error? = nil) {
-    reject?(code, message, error)
-    clear()
-  }
-
-  /// 清理回调
-  private func clear() {
-    resolve = nil
-    reject = nil
-  }
-
-  /// 是否正在等待回调（可选）
-  var isPending: Bool {
-    return resolve != nil || reject != nil
   }
 }

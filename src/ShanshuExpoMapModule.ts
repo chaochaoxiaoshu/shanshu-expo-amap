@@ -1,11 +1,12 @@
 import { NativeModule, requireNativeModule } from 'expo'
 
-import { ShanshuExpoMapModuleEvents } from './ShanshuExpoMap.types'
+import {
+  RequestLocationResult,
+  ShanshuExpoMapModuleEvents
+} from './ShanshuExpoMap.types'
 
 declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEvents> {
-  PI: number
-  hello(): string
-  setValueAsync(value: string): Promise<void>
+  requestLocation: () => Promise<RequestLocationResult>
 }
 
 // This call loads the native module object from the JSI.
