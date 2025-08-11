@@ -39,25 +39,62 @@ npx expo install shanshu-expo-amap
 如果你正在使用 iOS 模拟器或 Android 模拟器，请确保 [已启用位置功能](https://docs.expo.dev/versions/latest/sdk/location/#enable-emulator-location)。
 
 ```tsx
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { View, Button } from 'react-native'
 import ShanshuExpoMapModule, {
   ShanshuExpoMapView,
   type ShanshuExpoMapViewRef
 } from 'shanshu-expo-map'
 
-function App() {
+export default function App() {
   const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
 
+  useEffect(() => {
+    try {
+      mapViewRef.current?.setZoomLevel(16)
+    } catch (error) {
+      console.log((error as Error).message)
+    }
+  }, [])
+
   return (
-    <ShanshuExpoMapView
-      ref={mapViewRef}
-      style={{ flex: 1 }}
-      zoomLevel={16}
-      mapType={0}
-      onLoad={(event) => {
-        console.log('🗺️ 地图加载成功:', event.nativeEvent)
-      }}
-    />
+    <View style={{ position: 'relative', flex: 1 }}>
+      <ShanshuExpoMapView
+        ref={mapViewRef}
+        style={{ flex: 1 }}
+        mapType={0}
+        showUserLocation={true}
+        userTrackingMode={0}
+        annotationStyles={exampleAnnotationStyles}
+        annotations={exampleAnnotations}
+        polylineSegments={examplePolylineSegments}
+        onLoad={(event) => {
+          console.log('🗺️ 地图加载成功:', event.nativeEvent)
+        }}
+        onZoom={(event) => {
+          console.log('🗺️ 地图缩放:', event.nativeEvent)
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: '100%',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          paddingVertical: 32,
+          paddingHorizontal: 20,
+          backgroundColor: 'rgba(255, 255, 255, 0.8)'
+        }}
+      >
+        <Button title='获取定位' onPress={getLocation} />
+        <Button title='规划驾车路线' onPress={handleSearchDrivingRoute} />
+        <Button title='规划步行路线' onPress={handleSearchWalkingRoute} />
+      </View>
+    </View>
   )
 }
 ```

@@ -1,11 +1,15 @@
 import AMapFoundationKit
 import AMapLocationKit
+import AMapSearchKit
 import ExpoModulesCore
 import MAMapKit
 
 public class ShanshuExpoMapModule: Module {
-  var locationManager: AMapLocationManager?
+  private var locationManager: AMapLocationManager?
   private var locationDelegate: LocationManagerDelegate?
+
+  private var search: AMapSearchAPI?
+  private var searchDelegate: SearchDelegate?
 
   public func definition() -> ModuleDefinition {
     Name("ShanshuExpoMap")
@@ -13,10 +17,11 @@ public class ShanshuExpoMapModule: Module {
     OnCreate {
       let apiKey = Bundle.main.object(forInfoDictionaryKey: "AMAP_API_KEY") as? String
       AMapServices.shared().apiKey = apiKey
+      AMapServices.shared().enableHTTPS = true
+
       MAMapView.updatePrivacyAgree(AMapPrivacyAgreeStatus.didAgree)
       MAMapView.updatePrivacyShow(
         AMapPrivacyShowStatus.didShow, privacyInfo: AMapPrivacyInfoStatus.didContain)
-      AMapServices.shared().enableHTTPS = true
 
       locationManager = AMapLocationManager()
       locationDelegate = LocationManagerDelegate()
@@ -24,6 +29,10 @@ public class ShanshuExpoMapModule: Module {
       locationManager?.desiredAccuracy = kCLLocationAccuracyHundredMeters
       locationManager?.locationTimeout = 2
       locationManager?.reGeocodeTimeout = 2
+
+      search = AMapSearchAPI()
+      searchDelegate = SearchDelegate()
+      search?.delegate = searchDelegate
     }
 
     AsyncFunction("requestLocation") { (promise: Promise) -> Void in
@@ -32,8 +41,9 @@ public class ShanshuExpoMapModule: Module {
         return
       }
       locationManager.requestLocation(withReGeocode: true) { location, regeocode, error in
-        if error != nil {
-          promise.reject("E_LOCATION_FAILED", "定位失败")
+        if let error = error {
+          let errorMessage = error.localizedDescription
+          promise.reject("E_LOCATION_FAILED", "定位失败: \(errorMessage)")
           return
         }
         guard let location = location, let regeocode = regeocode else {
@@ -61,22 +71,120 @@ public class ShanshuExpoMapModule: Module {
       }
     }
 
-    View(ShanshuExpoMapView.self) {
-      Events("onLoad")
+    AsyncFunction("searchDrivingRoute") {
+      (options: [String: Any], promise: Promise) -> Void in
+      guard let search = search, let searchDelegate = searchDelegate else {
+        promise.reject("E_SEARCH_DELEGATE_NOT_FOUND", "搜索委托未初始化")
+        return
+      }
 
-      Prop("center") { (view, centerCoordinate: [String: Double]) in
-        if let latitude = centerCoordinate["latitude"],
-          let longitude = centerCoordinate["longitude"]
-        {
-          view.setCenter(latitude: latitude, longitude: longitude)
-        } else {
-          view.setCenter(latitude: nil, longitude: nil)
+      searchDelegate.drivingSearchHandler.begin(
+        resolve: { value in promise.resolve(value) },
+        reject: { code, message, error in
+          promise.reject(code, message)
+        }
+      )
+
+      guard let originDict = options["origin"] as? [String: Double],
+        let destinationDict = options["destination"] as? [String: Double],
+        let originLat = originDict["latitude"],
+        let originLng = originDict["longitude"],
+        let destLat = destinationDict["latitude"],
+        let destLng = destinationDict["longitude"]
+      else {
+        searchDelegate.drivingSearchHandler.finishFailure(code: "1", message: "无效的起点或终点坐标")
+        return
+      }
+
+      var showFieldType: AMapDrivingRouteShowFieldType? = nil
+      if let showFieldTypeString = options["showFieldType"] as? String {
+        switch showFieldTypeString {
+        case "none":
+          showFieldType = AMapDrivingRouteShowFieldType.none
+        case "cost":
+          showFieldType = AMapDrivingRouteShowFieldType.cost
+        case "tmcs":
+          showFieldType = AMapDrivingRouteShowFieldType.tmcs
+        case "navi":
+          showFieldType = AMapDrivingRouteShowFieldType.navi
+        case "cities":
+          showFieldType = AMapDrivingRouteShowFieldType.cities
+        case "polyline":
+          showFieldType = AMapDrivingRouteShowFieldType.polyline
+        case "newEnergy":
+          showFieldType = AMapDrivingRouteShowFieldType.newEnergy
+        case "all":
+          showFieldType = AMapDrivingRouteShowFieldType.all
+        default:
+          showFieldType = AMapDrivingRouteShowFieldType.none
         }
       }
 
-      Prop("zoomLevel") { (view, zoomLevel: Int) in
-        view.setZoomLevel(zoomLevel)
+      let request = AMapDrivingCalRouteSearchRequest()
+      request.origin = AMapGeoPoint.location(
+        withLatitude: CGFloat(originLat), longitude: CGFloat(originLng))
+      request.destination = AMapGeoPoint.location(
+        withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
+      request.showFieldType = showFieldType ?? .none
+
+      search.aMapDrivingV2RouteSearch(request)
+    }
+
+    AsyncFunction("searchWalkingRoute") {
+      (options: [String: Any], promise: Promise) -> Void in
+      guard let search = search, let searchDelegate = searchDelegate else {
+        promise.reject("E_SEARCH_DELEGATE_NOT_FOUND", "搜索委托未初始化")
+        return
       }
+
+      searchDelegate.walkingSearchHandler.begin(
+        resolve: { value in promise.resolve(value) },
+        reject: { code, message, error in
+          promise.reject(code, message)
+        }
+      )
+
+      guard let originDict = options["origin"] as? [String: Double],
+        let destinationDict = options["destination"] as? [String: Double],
+        let originLat = originDict["latitude"],
+        let originLng = originDict["longitude"],
+        let destLat = destinationDict["latitude"],
+        let destLng = destinationDict["longitude"]
+      else {
+        searchDelegate.walkingSearchHandler.finishFailure(code: "1", message: "无效的起点或终点坐标")
+        return
+      }
+
+      var showFieldType: AMapWalkingRouteShowFieldType? = nil
+      if let showFieldTypeString = options["showFieldType"] as? String {
+        switch showFieldTypeString {
+        case "none":
+          showFieldType = AMapWalkingRouteShowFieldType.none
+        case "cost":
+          showFieldType = AMapWalkingRouteShowFieldType.cost
+        case "navi":
+          showFieldType = AMapWalkingRouteShowFieldType.navi
+        case "polyline":
+          showFieldType = AMapWalkingRouteShowFieldType.polyline
+        case "all":
+          showFieldType = AMapWalkingRouteShowFieldType.all
+        default:
+          showFieldType = AMapWalkingRouteShowFieldType.none
+        }
+      }
+
+      let request = AMapWalkingRouteSearchRequest()
+      request.origin = AMapGeoPoint.location(
+        withLatitude: CGFloat(originLat), longitude: CGFloat(originLng))
+      request.destination = AMapGeoPoint.location(
+        withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
+      request.showFieldsType = showFieldType ?? .none
+
+      search.aMapWalkingRouteSearch(request)
+    }
+
+    View(ShanshuExpoMapView.self) {
+      Events("onLoad", "onZoom")
 
       Prop("mapType") { (view, mapType: Int) in
         view.setMapType(mapType)
@@ -90,51 +198,27 @@ public class ShanshuExpoMapModule: Module {
         view.setUserTrackingMode(userTrackingMode)
       }
 
-      Prop("defaultPolylineStyle") { (view, style: [String: Any]) in
-        if let polylineStyle = PolylineStyle.from(dictionary: style) {
-          view.setDefaultPolylineStyle(polylineStyle)
-        }
+      Prop("annotationStyles") { (view, styles: [[String: Any]]) in
+        view.setAnnotationStyles(styles)
       }
 
-      AsyncFunction("drawPolyline") { (view: ShanshuExpoMapView, coordinates: [[String: Double]]) in
-        view.drawPolyline(coordinates)
+      Prop("annotations") { (view, annotations: [[String: Any]]) in
+        view.setAnnotations(annotations)
       }
 
-      AsyncFunction("drawPolylineSegments") {
-        (view: ShanshuExpoMapView, segments: [[String: Any]]) in
-        view.drawPolylineSegments(segments)
+      Prop("polylineSegments") { (view, segments: [PolylineSegment]) in
+        view.setPolylineSegments(segments)
       }
 
-      AsyncFunction("clearAllOverlays") { (view: ShanshuExpoMapView) in
-        view.clearAllOverlays()
+      AsyncFunction("setCenter") {
+        (view: ShanshuExpoMapView, centerCoordinate: [String: Double], promise: Promise) in
+        view.setCenter(
+          latitude: centerCoordinate["latitude"], longitude: centerCoordinate["longitude"],
+          promise: promise)
       }
 
-      AsyncFunction("searchDrivingRoute") {
-        (view: ShanshuExpoMapView, options: [String: Any], promise: Promise) -> Void in
-        guard let originDict = options["origin"] as? [String: Double],
-          let destinationDict = options["destination"] as? [String: Double]
-        else {
-          promise.reject("E_INVALID_COORDINATES", "无效的起点和终点坐标")
-          return
-        }
-
-        view.searchDrivingRoute(
-          promise: promise, origin: originDict, destination: destinationDict,
-          showFieldTypeString: options["showFieldType"] as? String)
-      }
-
-      AsyncFunction("searchWalkingRoute") {
-        (view: ShanshuExpoMapView, options: [String: Any], promise: Promise) -> Void in
-        guard let originDict = options["origin"] as? [String: Double],
-          let destinationDict = options["destination"] as? [String: Double]
-        else {
-          promise.reject("E_INVALID_COORDINATES", "无效的起点和终点坐标")
-          return
-        }
-
-        view.searchWalkingRoute(
-          promise: promise, origin: originDict, destination: destinationDict,
-          showFieldTypeString: options["showFieldType"] as? String)
+      AsyncFunction("setZoomLevel") { (view: ShanshuExpoMapView, zoomLevel: Int) in
+        view.setZoomLevel(zoomLevel)
       }
     }
   }

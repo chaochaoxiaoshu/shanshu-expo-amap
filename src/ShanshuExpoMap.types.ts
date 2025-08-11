@@ -120,6 +120,94 @@ export interface PolylineSegment {
   style: PolylineStyle
 }
 
+export interface TextStyle {
+  color?: string // 文字颜色，默认白色
+  fontSize?: number // 字体大小，默认16
+  fontWeight?:
+    | 'normal'
+    | 'bold'
+    | '100'
+    | '200'
+    | '300'
+    | '400'
+    | '500'
+    | '600'
+    | '700'
+    | '800'
+    | '900'
+  fontFamily?: string // 字体
+  lineHeight?: number // 行高
+  numberOfLines?: number // 限制行数，超出显示省略号
+  textAlign?: 'left' | 'center' | 'right'
+  offset?: { x: number; y: number } // 文字相对图片中心的偏移
+}
+
+/**
+ * 标记点样式，在原生端会根据样式配置生成对应的 AnnotationView，必须是一个常量，不可以绑定状态
+ */
+export interface AnnotationStyle {
+  /**
+   * 样式的唯一标识，用于 annotation 配置引用该样式
+   */
+  id: string
+  /**
+   * zIndex 值，大值在上，默认为0
+   */
+  zIndex?: number
+  /**
+   * 标记点显示的图片，支持以下几种格式：
+   *
+   * - 网络资源 URL
+   * - base64 编码
+   */
+  image: string
+  /**
+   * 图片的尺寸
+   */
+  imageSize: {
+    width: number
+    height: number
+  }
+  /**
+   * annotationView 的中心默认位于 annotation 的坐标位置，可以设置centerOffset改变view的位置，正的偏移使view朝右下方移动，负的朝左上方，单位是屏幕坐标
+   */
+  centerOffset: { x: number; y: number }
+  /**
+   * 文本样式
+   */
+  textStyle?: TextStyle
+  /**
+   * 是否监听触摸事件，默认为 true
+   */
+  enabled?: boolean
+}
+
+/**
+ * 标记点数据，使用标记点必须先配置 `annotationStyles`，然后使用 `styleId` 引用对应的样式配置
+ */
+export interface Annotation<S extends string = string> {
+  /**
+   * 标记点的唯一标识，用于标记点的引用
+   */
+  key?: string
+  /**
+   * 标记点的坐标
+   */
+  coordinate: Coordinate
+  /**
+   * 标记点的标题
+   */
+  title?: string
+  /**
+   * 标记点的样式标识，引用 `annotationStyles` 中的样式
+   */
+  styleId: S
+  /**
+   * 是否处于选中状态，默认为 false
+   */
+  selected?: boolean
+}
+
 export interface AMapPath {
   distance: number
   duration: number
@@ -205,6 +293,11 @@ export interface OnLoadEventPayload {
   timestamp: number
 }
 
+export interface OnZoomEventPayload {
+  zoomLevel: number
+  center: Coordinate
+}
+
 export interface OnRouteSearchDoneResult {
   success: boolean
   /**
@@ -287,141 +380,34 @@ export interface ChangeEventPayload {
 
 export interface ShanshuExpoMapViewRef {
   /**
-   * 绘制折线
+   * 设置地图中心点
    *
-   * @param coordinates - 折线坐标数组
+   * @param center - 中心点坐标
    *
    * @example
    * ```tsx
-   * const exampleCoordates = [
-   *   { latitude: 31.230545, longitude: 121.473724 },
-   *   { latitude: 31.228051, longitude: 121.467568 },
-   *   { latitude: 31.223257, longitude: 121.471266 },
-   *   { latitude: 31.227265, longitude: 121.479399 }
-   * ]
-   * mapViewRef.current?.drawPolyline(exampleCoordates)
+   * const exampleCenter = { latitude: 31.230545, longitude: 121.473724 }
+   * mapViewRef.current?.setCenter(exampleCenter)
    * ```
    */
-  drawPolyline: (coordinates: Coordinate[]) => Promise<void> | undefined
+  setCenter: (center: Coordinate) => Promise<void> | undefined
   /**
-   * 分段绘制折线
+   * 设置地图缩放级别
    *
-   * @param segments - 折线段数组
-   *
-   * @example
-   * ```tsx
-   * const exampleSegments = [
-   *   {
-   *     coordinates: [
-   *       { latitude: 31.230545, longitude: 121.473724 },
-   *       { latitude: 31.227265, longitude: 121.479399 }
-   *     ],
-   *     style: {
-   *       color: "#FF0000",
-   *       width: 4,
-   *       lineDash: false
-   *     }
-   *   }
-   * ]
-   * mapViewRef.current?.drawPolylineSegments(exampleSegments)
-   * ```
-   */
-  drawPolylineSegments: (
-    segments: PolylineSegment[]
-  ) => Promise<void> | undefined
-  /**
-   * 清除所有覆盖物
+   * @param zoomLevel - 缩放级别
    *
    * @example
    * ```tsx
-   * mapViewRef.current?.clearAllOverlays()
+   * mapViewRef.current?.setZoomLevel(15)
    * ```
    */
-  clearAllOverlays: () => Promise<void> | undefined
-  /**
-   * 规划驾车路线
-   *
-   * @param origin - 起点坐标
-   * @param destination - 终点坐标
-   * @param showFieldType - 显示字段配置，详见 {@link AMapDrivingRouteShowFieldType}
-   * @returns 路线信息
-   *
-   * @example
-   * ```tsx
-   * try {
-   *   const result = await mapViewRef.current?.searchDrivingRoute({
-   *     origin: { latitude: 31.230545, longitude: 121.473724 },
-   *     destination: { latitude: 39.900896, longitude: 116.401049 },
-   *     showFieldType: 'polyline'
-   *   })
-   *   console.log('🚗 驾车路线规划结果:', result)
-   * } catch (error) {
-   *   console.log((error as Error).message)
-   * }
-   * ```
-   */
-  searchDrivingRoute: (options: {
-    origin: Coordinate
-    destination: Coordinate
-    showFieldType?: AMapDrivingRouteShowFieldType
-  }) => Promise<OnRouteSearchDoneResult> | undefined
-  /**
-   * 规划步行路线
-   *
-   * @param origin - 起点坐标
-   * @param destination - 终点坐标
-   * @param showFieldType - 显示字段配置，详见 {@link AMapWalkingRouteShowFieldType}
-   * @returns 路线信息
-   *
-   * @example
-   * ```tsx
-   * try {
-   *   const exampleOrigin = { latitude: 31.230545, longitude: 121.473724 }
-   *   const exampleDestination = { latitude: 31.228051, longitude: 121.467568 }
-   *   const result = await mapViewRef.current?.searchWalkingRoute({
-   *     origin: exampleOrigin,
-   *     destination: exampleDestination,
-   *     showFieldType: 'polyline'
-   *   })
-   *   console.log('🚶 步行路线规划结果:', result)
-   * } catch (error) {
-   *   console.log((error as Error).message)
-   * }
-   * ```
-   */
-  searchWalkingRoute: (options: {
-    origin: Coordinate
-    destination: Coordinate
-    showFieldType?: AMapWalkingRouteShowFieldType
-  }) => Promise<OnRouteSearchDoneResult> | undefined
+  setZoomLevel: (zoomLevel: ZoomLevel) => Promise<void> | undefined
 }
 
-export interface ShanshuExpoMapViewProps extends ViewProps {
+export interface ShanshuExpoMapViewProps<
+  Styles extends readonly AnnotationStyle[] = AnnotationStyle[]
+> extends ViewProps {
   ref?: React.Ref<ShanshuExpoMapViewRef>
-  /**
-   * 地图平移时，缩放级别不变，可通过改变地图的中心点来移动地图
-   *
-   * 如果设置了 center，则地图会忽略用户位置更新
-   */
-  center?: Coordinate
-  /**
-   * 地图的缩放级别的范围从3到19级，共17个级别
-   */
-  zoomLevel?: ZoomLevel
-  /**
-   * 是否显示用户位置，默认为 true
-   */
-  showUserLocation?: boolean
-  /**
-   * 用户位置更新模式，默认为 1
-   *
-   * - 0: 不追踪用户的location更新
-   * - 1: 追踪用户的location更新
-   * - 2: 追踪用户的location与heading更新
-   *
-   * 如果设置了 center，则地图会忽略用户位置更新
-   */
-  userTrackingMode?: UserTrackingMode
   /**
    * 地图类型
    *
@@ -434,11 +420,25 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
    */
   mapType?: MapType
   /**
-   * 默认折线样式，除了分段绘制折线以外的折线（包括路径规划）都会使用这个样式
+   * 是否显示用户位置
    */
-  defaultPolylineStyle?: PolylineStyle
+  showUserLocation: boolean
+  /**
+   * 用户位置更新模式
+   *
+   * - 0: 不追踪用户的location更新
+   * - 1: 追踪用户的location更新
+   * - 2: 追踪用户的location与heading更新
+   *
+   * 如果设置了 center，则地图会忽略用户位置更新
+   */
+  userTrackingMode: UserTrackingMode
+  annotationStyles?: Styles
+  annotations?: Annotation<Styles[number]['id']>[]
+  polylineSegments?: PolylineSegment[]
   /**
    * 地图加载成功事件
    */
   onLoad?: (event: { nativeEvent: OnLoadEventPayload }) => void
+  onZoom?: (event: { nativeEvent: OnZoomEventPayload }) => void
 }

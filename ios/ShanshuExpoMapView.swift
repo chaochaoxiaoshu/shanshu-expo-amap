@@ -6,29 +6,23 @@ import MAMapKit
 
 class ShanshuExpoMapView: ExpoView {
   private let mapView = MAMapView()
-  private let searchAPI: AMapSearchAPI = AMapSearchAPI()
 
+  private var annotationManager: AnnotationManager!
   private var polylineManager: PolylineManager!
-  private var defaultPolylineStyle = PolylineStyle(
-    color: UIColor(hex: "#2A6FDE"),
-    width: 6,
-    lineDash: false,
-    is3DArrowLine: false
-  )
 
-  private var manualCenter = false
+  private var userTrackingMode: MAUserTrackingMode = .none
 
   private let onLoad = EventDispatcher()
+  private let onZoom = EventDispatcher()
 
-  private let drivingSearchHandler = PromiseDelegateHandler<[String: Any]>()
-  private let walkingSearchHandler = PromiseDelegateHandler<[String: Any]>()
+  private let setCenterHandler = PromiseDelegateHandler<Void>()
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     clipsToBounds = true
     setupMapView()
+    initAnnotationManager()
     initPolylineManager()
-    setupSearchAPI()
     onLoad([
       "message": "Map loaded successfully",
       "timestamp": Date().timeIntervalSince1970,
@@ -37,8 +31,6 @@ class ShanshuExpoMapView: ExpoView {
 
   private func setupMapView() {
     mapView.delegate = self
-    mapView.showsUserLocation = true
-    mapView.userTrackingMode = .follow
     mapView.showsScale = true
 
     // let coordinate = CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
@@ -49,12 +41,12 @@ class ShanshuExpoMapView: ExpoView {
     addSubview(mapView)
   }
 
-  private func initPolylineManager() {
-    polylineManager = PolylineManager(mapView: mapView)
+  private func initAnnotationManager() {
+    annotationManager = AnnotationManager(mapView: mapView)
   }
 
-  private func setupSearchAPI() {
-    searchAPI.delegate = self
+  private func initPolylineManager() {
+    polylineManager = PolylineManager(mapView: mapView)
   }
 
   override func layoutSubviews() {
@@ -64,18 +56,30 @@ class ShanshuExpoMapView: ExpoView {
 
   // MARK: - 地图命令式方法
 
-  func setCenter(latitude: Double?, longitude: Double?) {
-    if let latitude = latitude, let longitude = longitude {
-      let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-      mapView.setCenter(coordinate, animated: false)
-      manualCenter = true
-    } else {
-      manualCenter = false
+  func setCenter(latitude: Double?, longitude: Double?, promise: Promise) {
+    setCenterHandler.begin(
+      resolve: { promise.resolve(()) },
+      reject: { code, message, error in
+        promise.reject(code, message)
+      }
+    )
+
+    guard let latitude = latitude, let longitude = longitude else {
+      setCenterHandler.finishFailure(code: "1", message: "无效的经纬度坐标")
+      return
     }
+    guard mapView.userTrackingMode == .none else {
+      setCenterHandler.finishFailure(code: "1", message: "用户跟踪模式下无法设置中心点")
+      return
+    }
+
+    let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    mapView.setCenter(coordinate, animated: true)
+    setCenterHandler.finishSuccess(Void())
   }
 
   func setZoomLevel(_ zoomLevel: Int) {
-    mapView.setZoomLevel(CGFloat(zoomLevel), animated: false)
+    mapView.setZoomLevel(CGFloat(zoomLevel), animated: true)
   }
 
   func setMapType(_ mapType: Int) {
@@ -87,134 +91,31 @@ class ShanshuExpoMapView: ExpoView {
   }
 
   func setUserTrackingMode(_ userTrackingMode: Int) {
-    mapView.userTrackingMode = MAUserTrackingMode(rawValue: userTrackingMode) ?? .follow
+    if let userTrackingMode = MAUserTrackingMode(rawValue: userTrackingMode) {
+      mapView.userTrackingMode = userTrackingMode
+      self.userTrackingMode = userTrackingMode
+    }
   }
 
-  func setDefaultPolylineStyle(_ polylineStyle: PolylineStyle) {
-    defaultPolylineStyle = polylineStyle
-  }
-
-  func drawPolyline(_ coordinates: [[String: Double]]) {
-    var polylineCoords = [CLLocationCoordinate2D]()
-
-    for coord in coordinates {
-      if let latitude = coord["latitude"], let longitude = coord["longitude"] {
-        polylineCoords.append(CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+  func setAnnotationStyles(_ styles: [[String: Any]]) {
+    var stylesWithImages = styles.map { $0 }
+    let imageSources = styles.map { $0["image"] }
+    ImageLoader.loadMultiple(from: imageSources) { images in
+      for (index, image) in images.enumerated() {
+        stylesWithImages[index]["image"] = image
+      }
+      DispatchQueue.main.async {
+        self.annotationManager.setStyles(stylesWithImages)
       }
     }
-
-    let polyline = MAPolyline(coordinates: &polylineCoords, count: UInt(polylineCoords.count))
-    mapView.add(polyline)
   }
 
-  func drawPolylineSegments(_ segments: [[String: Any]]) {
+  func setAnnotations(_ annotations: [[String: Any]]) {
+    annotationManager.setAnnotations(annotations)
+  }
+
+  func setPolylineSegments(_ segments: [PolylineSegment]) {
     polylineManager.updateSegments(from: segments)
-  }
-
-  func clearAllOverlays() {
-    mapView.removeOverlays(mapView.overlays)
-  }
-
-  func searchDrivingRoute(
-    promise: Promise, origin: [String: Double], destination: [String: Double],
-    showFieldTypeString: String?
-  ) {
-    drivingSearchHandler.begin(
-      resolve: { value in promise.resolve(value) },
-      reject: { code, message, error in
-        promise.reject(code, message)
-      }
-    )
-
-    guard let originLat = origin["latitude"],
-      let originLng = origin["longitude"],
-      let destLat = destination["latitude"],
-      let destLng = destination["longitude"]
-    else {
-      drivingSearchHandler.finishFailure(code: "1", message: "无效的起点或终点坐标")
-      return
-    }
-
-    var showFieldType: AMapDrivingRouteShowFieldType? = nil
-    if let showFieldTypeString = showFieldTypeString {
-      switch showFieldTypeString {
-      case "none":
-        showFieldType = AMapDrivingRouteShowFieldType.none
-      case "cost":
-        showFieldType = AMapDrivingRouteShowFieldType.cost
-      case "tmcs":
-        showFieldType = AMapDrivingRouteShowFieldType.tmcs
-      case "navi":
-        showFieldType = AMapDrivingRouteShowFieldType.navi
-      case "cities":
-        showFieldType = AMapDrivingRouteShowFieldType.cities
-      case "polyline":
-        showFieldType = AMapDrivingRouteShowFieldType.polyline
-      case "newEnergy":
-        showFieldType = AMapDrivingRouteShowFieldType.newEnergy
-      case "all":
-        showFieldType = AMapDrivingRouteShowFieldType.all
-      default:
-        showFieldType = AMapDrivingRouteShowFieldType.none
-      }
-    }
-
-    let request = AMapDrivingCalRouteSearchRequest()
-    request.origin = AMapGeoPoint.location(
-      withLatitude: CGFloat(originLat), longitude: CGFloat(originLng))
-    request.destination = AMapGeoPoint.location(
-      withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
-    request.showFieldType = showFieldType ?? .none
-
-    searchAPI.aMapDrivingV2RouteSearch(request)
-  }
-
-  func searchWalkingRoute(
-    promise: Promise, origin: [String: Double], destination: [String: Double],
-    showFieldTypeString: String?
-  ) {
-    walkingSearchHandler.begin(
-      resolve: { value in promise.resolve(value) },
-      reject: { code, message, error in
-        promise.reject(code, message)
-      }
-    )
-
-    guard let originLat = origin["latitude"],
-      let originLng = origin["longitude"],
-      let destLat = destination["latitude"],
-      let destLng = destination["longitude"]
-    else {
-      walkingSearchHandler.finishFailure(code: "1", message: "无效的起点或终点坐标")
-      return
-    }
-
-    var showFieldType: AMapWalkingRouteShowFieldType? = nil
-    if let showFieldTypeString = showFieldTypeString {
-      switch showFieldTypeString {
-      case "none":
-        showFieldType = AMapWalkingRouteShowFieldType.none
-      case "cost":
-        showFieldType = AMapWalkingRouteShowFieldType.cost
-      case "navi":
-        showFieldType = AMapWalkingRouteShowFieldType.navi
-      case "polyline":
-        showFieldType = AMapWalkingRouteShowFieldType.polyline
-      case "all":
-        showFieldType = AMapWalkingRouteShowFieldType.all
-      default:
-        showFieldType = AMapWalkingRouteShowFieldType.none
-      }
-    }
-
-    let request = AMapWalkingRouteSearchRequest()
-    request.origin = AMapGeoPoint.location(
-      withLatitude: CGFloat(originLat), longitude: CGFloat(originLng))
-    request.destination = AMapGeoPoint.location(
-      withLatitude: CGFloat(destLat), longitude: CGFloat(destLng))
-    request.showFieldsType = showFieldType ?? .none
-
-    searchAPI.aMapWalkingRouteSearch(request)
   }
 }
 
@@ -232,174 +133,46 @@ extension ShanshuExpoMapView: MAMapViewDelegate {
   func mapView(
     _ mapView: MAMapView!, didUpdate userLocation: MAUserLocation!, updatingLocation: Bool
   ) {
-    if updatingLocation && !manualCenter {
+    if updatingLocation && userTrackingMode != .none {
       let coordinate = userLocation.coordinate
       mapView.setCenter(coordinate, animated: true)
     }
   }
 
-  // 覆盖物渲染的回调
+  // 渲染标记的回调
+  func mapView(_ mapView: MAMapView!, viewFor annotation: MAAnnotation!) -> MAAnnotationView! {
+    if let annotation = annotation as? SSAnnotation {
+      let reuseId = "SSAnnotationView_\(annotation.style.hashValue)"
+      var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId)
+      if view == nil {
+        view = SSAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
+      } else {
+        view?.annotation = annotation
+      }
+
+      return view!
+    }
+    return nil
+  }
+
+  // 渲染覆盖物的回调
   func mapView(_ mapView: MAMapView!, rendererFor overlay: MAOverlay!) -> MAOverlayRenderer! {
     if overlay is MAPolyline {
       let renderer: MAPolylineRenderer = MAPolylineRenderer(overlay: overlay)
       if let style = polylineManager.styleForPolyline(overlay as! MAPolyline) {
-        renderer.strokeColor = style.color
+        renderer.strokeColor = UIColor(hex: style.color)
         renderer.lineWidth = style.width
         renderer.lineDashType = style.lineDash ? kMALineDashTypeSquare : kMALineDashTypeNone
         renderer.is3DArrowLine = style.is3DArrowLine
-      } else {
-        renderer.strokeColor = defaultPolylineStyle.color ?? UIColor(hex: "#2A6FDE")
-        renderer.lineWidth = defaultPolylineStyle.width ?? 6
-        renderer.lineDashType =
-          defaultPolylineStyle.lineDash ? kMALineDashTypeSquare : kMALineDashTypeNone
-        renderer.is3DArrowLine = defaultPolylineStyle.is3DArrowLine ?? false
       }
       return renderer
     }
     return nil
   }
-}
 
-// MARK: - AMapSearchDelegate
-extension ShanshuExpoMapView: AMapSearchDelegate {
-  private func parsePolyline(_ polyline: String) -> [CLLocationCoordinate2D] {
-    var coordinates: [CLLocationCoordinate2D] = []
-    let pointStrings = polyline.split(separator: ";")
-
-    for pointStr in pointStrings {
-      let coord = pointStr.split(separator: ",")
-      if coord.count == 2,
-        let lon = Double(coord[0]),
-        let lat = Double(coord[1])
-      {
-        coordinates.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
-      }
-    }
-    return coordinates
-  }
-
-  // 路线搜索完成的回调
-  func onRouteSearchDone(_ request: AMapRouteSearchBaseRequest!, response: AMapRouteSearchResponse!)
-  {
-    guard let response = response,
-      let route = response.route,
-      let paths = route.paths,
-      let path = paths.first
-    else {
-      if request is AMapDrivingCalRouteSearchRequest {
-        drivingSearchHandler.finishFailure(code: "1", message: "无效的响应数据")
-      } else if request is AMapWalkingRouteSearchRequest {
-        walkingSearchHandler.finishFailure(code: "1", message: "无效的响应数据")
-      }
-      return
-    }
-
-    if request is AMapDrivingCalRouteSearchRequest {
-      drivingSearchHandler.finishSuccess([
-        "success": true,
-        "count": response.count,
-        "route": serializeRouteResponse(route),
-      ])
-    } else if request is AMapWalkingRouteSearchRequest {
-      walkingSearchHandler.finishSuccess([
-        "success": true,
-        "count": response.count,
-        "route": serializeRouteResponse(route),
-      ])
-    }
-
-    var coordinates = [CLLocationCoordinate2D]()
-    if let polyline = path.polyline, !polyline.isEmpty {
-      let coords = parsePolyline(polyline)
-      coordinates.append(contentsOf: coords)
-    }
-
-    if !coordinates.isEmpty {
-      var coordsArray = coordinates
-      let polyline = MAPolyline(coordinates: &coordsArray, count: UInt(coordsArray.count))
-      mapView.add(polyline)
-    }
-  }
-
-  // 路线搜索失败的回调
-  func aMapSearchRequest(_ request: Any!, didFailWithError error: Error!) {
-    if request is AMapDrivingCalRouteSearchRequest {
-      drivingSearchHandler.finishFailure(
-        code: "1", message: "路线规划失败: \(error?.localizedDescription ?? "Unknown error")")
-    } else if request is AMapWalkingRouteSearchRequest {
-      walkingSearchHandler.finishFailure(
-        code: "1", message: "路线规划失败: \(error?.localizedDescription ?? "Unknown error")")
-    }
-  }
-}
-
-// MARK: - Utils
-extension ShanshuExpoMapView {
-
-  private func serializeRouteResponse(_ route: AMapRoute) -> [String: Any] {
-    var routeData: [String: Any] = [:]
-
-    // 序列化起点
-    if let origin = route.origin {
-      routeData["origin"] = [
-        "latitude": Double(origin.latitude),
-        "longitude": Double(origin.longitude),
-      ]
-    }
-
-    // 序列化终点
-    if let destination = route.destination {
-      routeData["destination"] = [
-        "latitude": Double(destination.latitude),
-        "longitude": Double(destination.longitude),
-      ]
-    }
-
-    // 出租车费用
-    routeData["taxiCost"] = Double(route.taxiCost)
-
-    // 分路段坐标点串
-    routeData["polyline"] = route.polyline ?? ""
-
-    // 序列化路径列表 (AMapPath 数组)
-    if let paths = route.paths {
-      var pathsArray: [[String: Any]] = []
-      for path in paths {
-        let pathData: [String: Any] = [
-          "distance": Double(path.distance),
-          "duration": Double(path.duration),
-          "stepCount": path.steps.count,
-          "polyline": path.polyline ?? "",
-        ]
-        pathsArray.append(pathData)
-      }
-      routeData["paths"] = pathsArray
-    }
-
-    // 序列化公交换乘方案列表 (AMapTransit 数组)
-    if let transits = route.transits {
-      var transitsArray: [[String: Any]] = []
-      for transit in transits {
-        let transitData: [String: Any] = [
-          "cost": Double(transit.cost),
-          "duration": Double(transit.duration),
-          "nightflag": transit.nightflag,
-          "walkingDistance": Double(transit.walkingDistance),
-          "distance": Double(transit.distance),
-        ]
-        transitsArray.append(transitData)
-      }
-      routeData["transits"] = transitsArray
-    }
-
-    // 序列化详细导航动作指令
-    if let transitNavi = route.transitNavi {
-      routeData["transitNavi"] = [
-        "action": transitNavi.action ?? "",
-        "assistantAction": transitNavi.assistantAction ?? "",
-      ]
-    }
-
-    return routeData
+  func mapView(_ mapView: MAMapView!, mapDidZoomByUser wasUserAction: Bool) {
+    onZoom([
+      "zoomLevel": mapView.zoomLevel
+    ])
   }
 }
