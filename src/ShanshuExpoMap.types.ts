@@ -15,7 +15,7 @@ export interface Coordinate {
 }
 
 /**
- * 地图的缩放级别的范围从3到19级，共17个级别
+ * 地图的缩放级别的范围从 3 到 20 ，共 18 个级别
  */
 export type ZoomLevel =
   | 3
@@ -35,6 +35,7 @@ export type ZoomLevel =
   | 17
   | 18
   | 19
+  | 20
 
 /**
  * 地图类型

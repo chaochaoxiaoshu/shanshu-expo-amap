@@ -14,11 +14,11 @@ const exampleAnnotationStyles = [
       width: 100,
       height: 30
     },
-    centerOffset: { x: -30, y: -10 },
+    centerOffset: { x: -50, y: -30 },
     textStyle: {
       color: '#FF0000',
-      fontSize: 12,
-      offset: { x: 0, y: 20 }
+      fontSize: 20,
+      offset: { x: 0, y: 0 }
     }
   },
   {
@@ -29,11 +29,11 @@ const exampleAnnotationStyles = [
       width: 30,
       height: 30
     },
-    centerOffset: { x: 0, y: 0 },
+    centerOffset: { x: -15, y: -30 },
     textStyle: {
       color: '#00FF00',
-      fontSize: 12,
-      offset: { x: 0, y: 20 }
+      fontSize: 20,
+      offset: { x: 0, y: 0 }
     }
   }
 ]

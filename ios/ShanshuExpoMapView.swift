@@ -123,7 +123,7 @@ class ShanshuExpoMapView: ExpoView {
 extension ShanshuExpoMapView: MAMapViewDelegate {
   // 请求位置权限回调
   public func mapViewRequireLocationAuth(_ mapView: MAMapView!) {
-    if CLLocationManager.authorizationStatus() == .notDetermined {
+    if CLLocationManager().authorizationStatus == .notDetermined {
       let locationManager = CLLocationManager()
       locationManager.requestAlwaysAuthorization()
     }

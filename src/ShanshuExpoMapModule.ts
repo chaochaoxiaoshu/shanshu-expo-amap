@@ -10,6 +10,9 @@ import {
 } from './ShanshuExpoMap.types'
 
 declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEvents> {
+  /**
+   * 单次请求位置
+   */
   requestLocation: () => Promise<RequestLocationResult>
   /**
    * 规划驾车路线
@@ -22,7 +25,7 @@ declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEven
    * @example
    * ```tsx
    * try {
-   *   const result = await mapViewRef.current?.searchDrivingRoute({
+   *   const result = await ShanshuExpoMapModule.searchDrivingRoute({
    *     origin: { latitude: 31.230545, longitude: 121.473724 },
    *     destination: { latitude: 39.900896, longitude: 116.401049 },
    *     showFieldType: 'polyline'
@@ -51,7 +54,7 @@ declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEven
    * try {
    *   const exampleOrigin = { latitude: 31.230545, longitude: 121.473724 }
    *   const exampleDestination = { latitude: 31.228051, longitude: 121.467568 }
-   *   const result = await mapViewRef.current?.searchWalkingRoute({
+   *   const result = await ShanshuExpoMapModule.searchWalkingRoute({
    *     origin: exampleOrigin,
    *     destination: exampleDestination,
    *     showFieldType: 'polyline'

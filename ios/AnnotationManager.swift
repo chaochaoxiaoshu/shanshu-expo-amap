@@ -30,23 +30,39 @@ class AnnotationManager {
 
     mapView.removeAnnotations(mapView.annotations)
 
+    var ssAnnotations: [SSAnnotation] = []
+
     for annotation in annotations {
       guard let style = styles.first(where: { $0.id == annotation.styleId }) else { continue }
 
       let ssAnnotation = SSAnnotation(
         coordinate: CLLocationCoordinate2D(
-          latitude: annotation.coordinate.latitude, longitude: annotation.coordinate.longitude),
-        style: style)
+          latitude: annotation.coordinate.latitude,
+          longitude: annotation.coordinate.longitude
+        ),
+        style: style
+      )
       ssAnnotation.title = annotation.title
+      ssAnnotations.append(ssAnnotation)
+    }
 
-      mapView.addAnnotation(ssAnnotation)
-      if annotation.selected {
-        mapView.selectAnnotation(ssAnnotation, animated: true)
-      }
+    // 一次性添加
+    mapView.addAnnotations(ssAnnotations)
+
+    // 单独处理选中状态（可选）
+    for (index, annotation) in annotations.enumerated() where annotation.selected {
+      mapView.selectAnnotation(ssAnnotations[index], animated: true)
     }
 
     print("渲染完成： \(annotations.count) 个标记")
   }
+}
+
+func offsetFrom(_ value: [String: Double]?) -> CGPoint {
+  guard let dict = value, let x = dict["x"], let y = dict["y"] else {
+    return .zero
+  }
+  return CGPoint(x: x, y: y)
 }
 
 struct TextStyle: Hashable {
@@ -60,27 +76,55 @@ struct TextStyle: Hashable {
   var offset: CGPoint?
 
   static func from(dictionary: [String: Any]) -> TextStyle? {
-    guard let color = dictionary["color"] as? UIColor,
-      let fontSize = dictionary["fontSize"] as? CGFloat,
-      let fontWeight = dictionary["fontWeight"] as? UIFont.Weight,
-      let fontFamily = dictionary["fontFamily"] as? String,
-      let lineHeight = dictionary["lineHeight"] as? CGFloat,
-      let numberOfLines = dictionary["numberOfLines"] as? Int,
-      let textAlign = dictionary["textAlign"] as? NSTextAlignment,
-      let offset = dictionary["offset"] as? CGPoint
-    else {
-      return nil
-    }
+    if dictionary.isEmpty { return nil }
+
+    let color = dictionary["color"] as? String ?? "#000000"
+    let fontSize = dictionary["fontSize"] as? Double ?? 16
+    let fontWeight = dictionary["fontWeight"] as? String ?? "medium"
+    let fontFamily = dictionary["fontFamily"] as? String
+    let lineHeight = dictionary["lineHeight"] as? Double ?? 16
+    let numberOfLines = dictionary["numberOfLines"] as? Int
+    let textAlign = dictionary["textAlign"] as? String ?? "center"
+    let offsetDict = dictionary["offset"] as? [String: Double]
 
     return TextStyle(
-      color: color,
-      fontSize: fontSize,
-      fontWeight: fontWeight,
+      color: UIColor(hex: color),
+      fontSize: CGFloat(fontSize),
+      fontWeight: fontWeightFrom(fontWeight),
       fontFamily: fontFamily,
-      lineHeight: lineHeight,
+      lineHeight: CGFloat(lineHeight),
       numberOfLines: numberOfLines,
-      textAlign: textAlign,
-      offset: offset)
+      textAlign: textAlignmentFrom(textAlign),
+      offset: offsetFrom(offsetDict)
+    )
+  }
+
+  static func fontWeightFrom(_ value: Any?) -> UIFont.Weight {
+    guard let str = value as? String else { return .regular }
+    switch str.lowercased() {
+    case "normal": return .regular
+    case "bold": return .bold
+    case "100": return .ultraLight
+    case "200": return .thin
+    case "300": return .light
+    case "400": return .regular
+    case "500": return .medium
+    case "600": return .semibold
+    case "700": return .bold
+    case "800": return .heavy
+    case "900": return .black
+    default: return .regular
+    }
+  }
+
+  static func textAlignmentFrom(_ value: Any?) -> NSTextAlignment {
+    guard let str = value as? String else { return .natural }
+    switch str.lowercased() {
+    case "left": return .left
+    case "center": return .center
+    case "right": return .right
+    default: return .natural
+    }
   }
 }
 
@@ -97,16 +141,14 @@ struct AnnotationStyle: Hashable {
     guard let id = dictionary["id"] as? String,
       let image = dictionary["image"] as? UIImage,
       let imageSizeDict = dictionary["imageSize"] as? [String: Any],
-      let centerOffsetDict = dictionary["centerOffset"] as? [String: Any]
+      let centerOffsetDict = dictionary["centerOffset"] as? [String: Double]?
     else {
       return nil
     }
 
     let zIndex = dictionary["zIndex"] as? Int ?? 0
     let enabled = dictionary["enabled"] as? Bool ?? true
-    let centerOffset = CGPoint(
-      x: centerOffsetDict["x"] as? CGFloat ?? 0,
-      y: centerOffsetDict["y"] as? CGFloat ?? 0)
+    let centerOffset = offsetFrom(centerOffsetDict)
     let textStyleDict = dictionary["textStyle"] as? [String: Any]
     let textStyle = TextStyle.from(dictionary: textStyleDict ?? [:])
 
@@ -179,6 +221,7 @@ class SSAnnotationView: MAAnnotationView {
     guard let annotation = annotation as? SSAnnotation else {
       return
     }
+    print("textStyle", annotation.style.textStyle)
 
     let overlayView = OverlayView(
       frame: CGRect(
@@ -211,12 +254,10 @@ class OverlayView: UIView {
   let imageView = UIImageView()
   let label = UILabel()
 
-  // 整体移动偏移（图片和文字整体移动）
   var contentOffset: CGPoint = .zero {
     didSet { updateContentOffsetConstraints() }
   }
 
-  // 文字相对于图片中心的微调偏移
   var textOffset: CGPoint = .zero {
     didSet { updateLabelOffsetConstraints() }
   }
@@ -238,6 +279,9 @@ class OverlayView: UIView {
   }
 
   private func setup() {
+    print("contentOffset", contentOffset)
+    print("textOffset", textOffset)
+
     contentView.translatesAutoresizingMaskIntoConstraints = false
     imageView.translatesAutoresizingMaskIntoConstraints = false
     label.translatesAutoresizingMaskIntoConstraints = false
@@ -246,13 +290,11 @@ class OverlayView: UIView {
     contentView.addSubview(imageView)
     contentView.addSubview(label)
 
-    // contentView 居中 OverlayView，并加 contentOffset
     contentCenterXConstraint = contentView.centerXAnchor.constraint(
       equalTo: centerXAnchor, constant: contentOffset.x)
     contentCenterYConstraint = contentView.centerYAnchor.constraint(
       equalTo: centerYAnchor, constant: contentOffset.y)
 
-    // label 居中 contentView，再加 textOffset
     labelCenterXConstraint = label.centerXAnchor.constraint(
       equalTo: contentView.centerXAnchor, constant: textOffset.x)
     labelCenterYConstraint = label.centerYAnchor.constraint(
@@ -274,19 +316,21 @@ class OverlayView: UIView {
       labelCenterYConstraint,
     ])
 
-    label.textColor = .white
-    label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+    updateContentOffsetConstraints()
+    updateLabelOffsetConstraints()
   }
 
   private func updateContentOffsetConstraints() {
     contentCenterXConstraint.constant = contentOffset.x
     contentCenterYConstraint.constant = contentOffset.y
     setNeedsLayout()
+    layoutIfNeeded()
   }
 
   private func updateLabelOffsetConstraints() {
     labelCenterXConstraint.constant = textOffset.x
     labelCenterYConstraint.constant = textOffset.y
     setNeedsLayout()
+    layoutIfNeeded()
   }
 }
