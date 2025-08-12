@@ -99,6 +99,18 @@ async function getLocation() {
   console.log('location', location)
 }
 
+async function handleSearchInputTips() {
+  try {
+    const result = await ShanshuExpoMapModule.searchInputTips({
+      keywords: '方圆大厦',
+      city: '024'
+    })
+    console.log('input tips result', result)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+}
+
 async function handleSearchDrivingRoute() {
   try {
     const result = await ShanshuExpoMapModule.searchDrivingRoute({
@@ -120,6 +132,35 @@ async function handleSearchWalkingRoute() {
       showFieldType: 'polyline'
     })
     console.log('🚶 步行路线规划结果:', result)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+}
+
+async function handleSearchRidingRoute() {
+  try {
+    const result = await ShanshuExpoMapModule.searchRidingRoute({
+      origin: { latitude: 31.230545, longitude: 121.473724 },
+      destination: { latitude: 31.223257, longitude: 121.471266 },
+      showFieldType: 'polyline'
+    })
+    console.log('🚲 骑行路线规划结果:', result)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+}
+
+async function handleSearchTransitRoute() {
+  try {
+    const result = await ShanshuExpoMapModule.searchTransitRoute({
+      origin: { latitude: 31.230545, longitude: 121.473724 },
+      destination: { latitude: 31.223257, longitude: 121.471266 },
+      strategy: 0,
+      city: '021',
+      destinationCity: '021',
+      showFieldType: 'polyline'
+    })
+    console.log('🚌 公交路线规划结果:', result)
   } catch (error) {
     console.log((error as Error).message)
   }
@@ -170,8 +211,11 @@ export default function App() {
         }}
       >
         <Button title='获取定位' onPress={getLocation} />
+        <Button title='关键字搜索' onPress={handleSearchInputTips} />
         <Button title='规划驾车路线' onPress={handleSearchDrivingRoute} />
         <Button title='规划步行路线' onPress={handleSearchWalkingRoute} />
+        <Button title='规划骑行路线' onPress={handleSearchRidingRoute} />
+        <Button title='规划公交路线' onPress={handleSearchTransitRoute} />
       </View>
     </View>
   )

@@ -2,10 +2,16 @@ import { NativeModule, requireNativeModule } from 'expo'
 
 import {
   AMapDrivingRouteShowFieldType,
+  AMapRidingRouteShowFieldType,
   AMapWalkingRouteShowFieldType,
-  Coordinate,
   OnRouteSearchDoneResult,
   RequestLocationResult,
+  SearchDrivingRouteOptions,
+  SearchInputTipsOptions,
+  SearchInputTipsResult,
+  SearchRidingRouteOptions,
+  SearchTransitRouteOptions,
+  SearchWalkingRouteOptions,
   ShanshuExpoMapModuleEvents
 } from './ShanshuExpoMap.types'
 
@@ -14,6 +20,25 @@ declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEven
    * 单次请求位置
    */
   requestLocation: () => Promise<RequestLocationResult>
+  /**
+   * 关键字搜索
+   *
+   * @example
+   * ```tsx
+   * try {
+   *   const result = await ShanshuExpoMapModule.searchInputTips({
+   *     keywords: '方圆大厦',
+   *     city: '024'
+   *   })
+   *   console.log('方圆大厦搜索结果:', result)
+   * } catch (error) {
+   *   console.log((error as Error).message)
+   * }
+   * ```
+   */
+  searchInputTips: (
+    options: SearchInputTipsOptions
+  ) => Promise<SearchInputTipsResult> | undefined
   /**
    * 规划驾车路线
    *
@@ -36,11 +61,9 @@ declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEven
    * }
    * ```
    */
-  searchDrivingRoute: (options: {
-    origin: Coordinate
-    destination: Coordinate
-    showFieldType?: AMapDrivingRouteShowFieldType
-  }) => Promise<OnRouteSearchDoneResult> | undefined
+  searchDrivingRoute: (
+    options: SearchDrivingRouteOptions
+  ) => Promise<OnRouteSearchDoneResult> | undefined
   /**
    * 规划步行路线
    *
@@ -65,12 +88,80 @@ declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEven
    * }
    * ```
    */
-  searchWalkingRoute: (options: {
-    origin: Coordinate
-    destination: Coordinate
-    showFieldType?: AMapWalkingRouteShowFieldType
-  }) => Promise<OnRouteSearchDoneResult> | undefined
+  searchWalkingRoute: (
+    options: SearchWalkingRouteOptions
+  ) => Promise<OnRouteSearchDoneResult> | undefined
+  /**
+   * 规划骑行路线
+   *
+   * @param origin - 起点坐标
+   * @param destination - 终点坐标
+   * @param showFieldType - 显示字段配置，详见 {@link AMapRidingRouteShowFieldType}
+   * @param alternativeRoute - 返回备选方案数目，取值范围为 0-3，0 表示不返回备选方案
+   * @returns 路线信息
+   *
+   * @example
+   * ```tsx
+   * try {
+   *   const exampleOrigin = { latitude: 31.230545, longitude: 121.473724 }
+   *   const exampleDestination = { latitude: 31.228051, longitude: 121.467568 }
+   *   const result = await ShanshuExpoMapModule.searchRidingRoute({
+   *     origin: exampleOrigin,
+   *     destination: exampleDestination,
+   *     showFieldType: 'polyline'
+   *   })
+   *   console.log('🚴 骑行路线规划结果:', result)
+   * } catch (error) {
+   *   console.log((error as Error).message)
+   * }
+   * ```
+   */
+  searchRidingRoute: (
+    options: SearchRidingRouteOptions
+  ) => Promise<OnRouteSearchDoneResult> | undefined
+  /**
+   * 规划公交路线
+   *
+   * @param origin - 起点坐标
+   * @param destination - 终点坐标
+   * @param strategy - 公交换乘策略
+   * @param city - 起点城市
+   * @param destinationCity - 目的地城市
+   * @param nightflag - 是否包含夜班车
+   * @param originPOI - 起点 POI
+   * @param destinationPOI - 目的地 POI
+   * @param adcode - 起点所在行政区域编码
+   * @param destinationAdcode - 终点所在行政区域编码
+   * @param alternativeRoute - 返回方案条数 可传入1-10的阿拉伯数字，代表返回的不同条数。默认值：5
+   * @param multiExport - 是否返回所有地铁出入口
+   * @param maxTrans - 最大换乘次数
+   * @param date - 请求日期
+   * @param time - 请求时间
+   * @param showFieldType - 显示字段配置，详见 {@link AMapRidingRouteShowFieldType}
+   * @returns 路线信息
+   *
+   * @example
+   * ```tsx
+   * try {
+   *   const exampleOrigin = { latitude: 31.230545, longitude: 121.473724 }
+   *   const exampleDestination = { latitude: 31.228051, longitude: 121.467568 }
+   *   const result = await ShanshuExpoMapModule.searchTransitRoute({
+   *     origin: exampleOrigin,
+   *     destination: exampleDestination,
+   *     strategy: 0,
+   *     city: '021',
+   *     destinationCity: '021',
+   *     showFieldType: 'polyline'
+   *   })
+   *   console.log('🚌 公交路线规划结果:', result)
+   * } catch (error) {
+   *   console.log((error as Error).message)
+   * }
+   * ```
+   */
+  searchTransitRoute: (
+    options: SearchTransitRouteOptions
+  ) => Promise<OnRouteSearchDoneResult> | undefined
 }
 
-// This call loads the native module object from the JSI.
 export default requireNativeModule<ShanshuExpoMapModule>('ShanshuExpoMap')

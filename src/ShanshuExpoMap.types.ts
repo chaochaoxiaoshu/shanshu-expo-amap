@@ -85,6 +85,20 @@ export type AMapWalkingRouteShowFieldType =
   | 'polyline'
   | 'all'
 
+export type AMapRidingRouteShowFieldType =
+  | 'none'
+  | 'cost'
+  | 'navi'
+  | 'polyline'
+  | 'all'
+
+export type AMapTransitRouteShowFieldType =
+  | 'none'
+  | 'cost'
+  | 'navi'
+  | 'polyline'
+  | 'all'
+
 /**
  * 折线线段样式
  */
@@ -105,6 +119,10 @@ export interface PolylineStyle {
    * 是否启用 3d 箭头样式
    */
   is3DArrowLine: boolean
+  /**
+   * 纹理图片，尺寸 64*64
+   */
+  textureImage?: string
 }
 
 /**
@@ -296,7 +314,183 @@ export interface OnLoadEventPayload {
 
 export interface OnZoomEventPayload {
   zoomLevel: number
+}
+
+export interface OnRegionChangedEventPayload {
   center: Coordinate
+  span: {
+    latitudeDelta: number
+    longitudeDelta: number
+  }
+}
+
+export interface SearchInputTipsOptions {
+  /**
+   * 搜索关键字
+   */
+  keywords: string
+  /**
+   * 指定查询城市
+   */
+  city?: string
+  /**
+   * 指定查询类型，多个类型用 | 分隔
+   */
+  types?: string
+  /**
+   * 是否限制在 city 内搜索
+   */
+  cityLimit?: boolean
+  /**
+   * 位置坐标，经纬度坐标，经度在前，纬度在后，用逗号分隔
+   */
+  location?: string
+}
+
+export interface SearchInputTip {
+  uid: string
+  name: string
+  address: string
+  adcode: string
+  district: string
+  typecode: string
+}
+
+export interface SearchInputTipsResult {
+  /**
+   * 搜索结果数目
+   */
+  count: number
+  /**
+   * 搜索结果
+   */
+  tips: SearchInputTip[]
+}
+
+export interface SearchDrivingRouteOptions {
+  /**
+   * 起点坐标
+   */
+  origin: Coordinate
+  /**
+   * 终点坐标
+   */
+  destination: Coordinate
+  /**
+   * 显示字段配置，详见 {@link AMapDrivingRouteShowFieldType}
+   */
+  showFieldType?: AMapDrivingRouteShowFieldType
+}
+
+export interface SearchWalkingRouteOptions {
+  /**
+   * 起点坐标
+   */
+  origin: Coordinate
+  /**
+   * 终点坐标
+   */
+  destination: Coordinate
+  /**
+   * 显示字段配置，详见 {@link AMapWalkingRouteShowFieldType}
+   */
+  showFieldType?: AMapWalkingRouteShowFieldType
+}
+
+export type SearchRidingRouteOptions = {
+  /**
+   * 起点坐标
+   */
+  origin: Coordinate
+  /**
+   * 终点坐标
+   */
+  destination: Coordinate
+  /**
+   * 显示字段配置，详见 {@link AMapRidingRouteShowFieldType}
+   */
+  showFieldType?: AMapRidingRouteShowFieldType
+  /**
+   * 返回备选方案数目，取值范围为 0-3，0 表示不返回备选方案
+   */
+  alternativeRoute?: number
+}
+
+export interface SearchTransitRouteOptions {
+  /**
+   * 起点坐标
+   */
+  origin: Coordinate
+  /**
+   * 终点坐标
+   */
+  destination: Coordinate
+  /**
+   * 公交换乘策略，默认为 0
+   *
+   * - 0：推荐模式，综合权重，同高德APP默认
+   * - 1：最经济模式，票价最低
+   * - 2：最少换乘模式，换乘次数少
+   * - 3：最少步行模式，尽可能减少步行距离
+   * - 4：最舒适模式，尽可能乘坐空调车
+   * - 5：不乘地铁模式，不乘坐地铁路线
+   * - 6：地铁图模式，起终点都是地铁站（地铁图模式下originpoi及destinationpoi为必填项）
+   * - 7：地铁优先模式，步行距离不超过4KM
+   * - 8：时间短模式，方案花费总时间最少
+   */
+  strategy: number
+  /**
+   * 起点城市，必填，仅支持citycode
+   */
+  city: string
+  /**
+   * 目的地城市，必填，仅支持citycode，与city相同时代表同城，不同时代表跨城
+   */
+  destinationCity: string
+  /**
+   * 是否包含夜班车，默认为 false
+   */
+  nightflag?: boolean
+  /**
+   * 起点 POI
+   */
+  originPOI?: string
+  /**
+   * 目的地 POI
+   */
+  destinationPOI?: string
+  /**
+   * 起点所在行政区域编码
+   */
+  adcode?: string
+  /**
+   * 终点所在行政区域编码
+   */
+  destinationAdcode?: string
+  /**
+   * 返回方案条数 可传入1-10的阿拉伯数字，代表返回的不同条数。默认值：5
+   */
+  alternativeRoute?: number
+  /**
+   * 是否返回所有地铁出入口，默认为 false
+   */
+  multiExport?: boolean
+  /**
+   * 最大换乘次数: 0：直达 1：最多换乘1次 2：最多换乘2次 3：最多换乘3次 4：最多换乘4次。默认值：4
+   */
+  maxTrans?: number
+  /**
+   * 请求日期，格式为 "YYYY-MM-DD"
+   */
+  date?: string
+  /**
+   * 请求时间，格式为 "HH:mm"
+   */
+  time?: string
+  /**
+   * 显示字段配置，详见 {@link AMapTransitRouteShowFieldType}
+   */
+  showFieldType?: AMapTransitRouteShowFieldType
 }
 
 export interface OnRouteSearchDoneResult {
@@ -442,4 +636,7 @@ export interface ShanshuExpoMapViewProps<
    */
   onLoad?: (event: { nativeEvent: OnLoadEventPayload }) => void
   onZoom?: (event: { nativeEvent: OnZoomEventPayload }) => void
+  onRegionChanged?: (event: {
+    nativeEvent: OnRegionChangedEventPayload
+  }) => void
 }
