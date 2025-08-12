@@ -4,8 +4,12 @@ import UIKit
 /// 声明式绘制标记点的管理器
 class AnnotationManager {
     private weak var mapView: MAMapView?
+    
+    private var selectedAnnotationId: String? = nil
+    
     private var annotations: [Annotation] = []
     private var styles: [AnnotationStyle] = []
+    private var uiImages: [String: UIImage] = [:]
 
     private var isStylesReady = false
     private var isAnnotationsReady = false
@@ -14,16 +18,34 @@ class AnnotationManager {
         self.mapView = mapView
     }
 
-    func setStyles(_ styles: [[String: Any]]) {
-        self.styles = styles.compactMap { AnnotationStyle.from(dictionary: $0) }
-        isStylesReady = true
-        tryRenderAnnotations()
+    func setStyles(_ styles: [AnnotationStyle]) {
+        self.styles = styles
+        let imageSources = styles.map { $0.image.url }
+        Task { [weak self] in
+            guard let self = self else { return }
+            
+            let images = await ImageLoader.loadMultiple(from: imageSources)
+            for (index, image) in images.enumerated() {
+                let id = styles[index].id
+                self.uiImages[id] = image
+            }
+            
+            await MainActor.run {
+                self.isStylesReady = true
+                self.tryRenderAnnotations()
+            }
+        }
     }
 
-    func setAnnotations(_ annotations: [[String: Any]]) {
-        self.annotations = annotations.compactMap { Annotation.from(dictionary: $0) }
+    func setAnnotations(_ annotations: [Annotation]) {
+        self.annotations = annotations
         isAnnotationsReady = true
         tryRenderAnnotations()
+    }
+    
+    func setSelectedAnnotationId(_ id: String) {
+        selectedAnnotationId = id
+        trySelectAnnotation()
     }
 
     private func tryRenderAnnotations() {
@@ -34,183 +56,48 @@ class AnnotationManager {
         var ssAnnotations: [SSAnnotation] = []
 
         for annotation in annotations {
-            guard let style = styles.first(where: { $0.id == annotation.styleId }) else { continue }
+            guard let style = styles.first(where: { $0.id == annotation.styleId }),
+                  let image = uiImages[style.id] else { continue }
 
-            let ssAnnotation = SSAnnotation(
-                coordinate: CLLocationCoordinate2D(
-                    latitude: annotation.coordinate.latitude,
-                    longitude: annotation.coordinate.longitude
-                ),
-                style: style
+            let ssAnnotation = SSAnnotation(id: annotation.id, coordinate: CLLocationCoordinate2D(latitude: annotation.coordinate.latitude, longitude: annotation.coordinate.longitude),
+                style: style,
+                image: image
             )
             ssAnnotation.title = annotation.title
             ssAnnotations.append(ssAnnotation)
         }
 
-        // 一次性添加
         mapView.addAnnotations(ssAnnotations)
 
-        // 单独处理选中状态（可选）
-        for (index, annotation) in annotations.enumerated() where annotation.selected {
-            mapView.selectAnnotation(ssAnnotations[index], animated: true)
-        }
-
-        print("渲染完成： \(annotations.count) 个标记")
+        trySelectAnnotation()
     }
-}
-
-func offsetFrom(_ value: [String: Double]?) -> CGPoint {
-    guard let dict = value, let x = dict["x"], let y = dict["y"] else {
-        return .zero
-    }
-    return CGPoint(x: x, y: y)
-}
-
-/// 字体样式
-struct TextStyle: Hashable {
-    var color: UIColor
-    var fontSize: CGFloat
-    var fontWeight: UIFont.Weight
-    var fontFamily: String?
-    var lineHeight: CGFloat?
-    var numberOfLines: Int?
-    var textAlign: NSTextAlignment?
-    var offset: CGPoint?
-
-    static func from(dictionary: [String: Any]) -> TextStyle? {
-        if dictionary.isEmpty { return nil }
-
-        let color = dictionary["color"] as? String ?? "#000000"
-        let fontSize = dictionary["fontSize"] as? Double ?? 16
-        let fontWeight = dictionary["fontWeight"] as? String ?? "medium"
-        let fontFamily = dictionary["fontFamily"] as? String
-        let lineHeight = dictionary["lineHeight"] as? Double ?? 16
-        let numberOfLines = dictionary["numberOfLines"] as? Int
-        let textAlign = dictionary["textAlign"] as? String ?? "center"
-        let offsetDict = dictionary["offset"] as? [String: Double]
-
-        return TextStyle(
-            color: UIColor(hex: color),
-            fontSize: CGFloat(fontSize),
-            fontWeight: fontWeightFrom(fontWeight),
-            fontFamily: fontFamily,
-            lineHeight: CGFloat(lineHeight),
-            numberOfLines: numberOfLines,
-            textAlign: textAlignmentFrom(textAlign),
-            offset: offsetFrom(offsetDict)
-        )
-    }
-
-    static func fontWeightFrom(_ value: Any?) -> UIFont.Weight {
-        guard let str = value as? String else { return .regular }
-        switch str.lowercased() {
-        case "normal": return .regular
-        case "bold": return .bold
-        case "100": return .ultraLight
-        case "200": return .thin
-        case "300": return .light
-        case "400": return .regular
-        case "500": return .medium
-        case "600": return .semibold
-        case "700": return .bold
-        case "800": return .heavy
-        case "900": return .black
-        default: return .regular
-        }
-    }
-
-    static func textAlignmentFrom(_ value: Any?) -> NSTextAlignment {
-        guard let str = value as? String else { return .natural }
-        switch str.lowercased() {
-        case "left": return .left
-        case "center": return .center
-        case "right": return .right
-        default: return .natural
-        }
-    }
-}
-
-/// 标记点样式
-struct AnnotationStyle: Hashable {
-    var id: String
-    var zIndex: Int
-    var image: UIImage
-    var imageSize: CGSize
-    var centerOffset: CGPoint
-    var enabled: Bool
-    var textStyle: TextStyle?
-
-    static func from(dictionary: [String: Any]) -> AnnotationStyle? {
-        guard let id = dictionary["id"] as? String,
-            let image = dictionary["image"] as? UIImage,
-            let imageSizeDict = dictionary["imageSize"] as? [String: Any],
-            let centerOffsetDict = dictionary["centerOffset"] as? [String: Double]?
-        else {
-            return nil
-        }
-
-        let zIndex = dictionary["zIndex"] as? Int ?? 0
-        let enabled = dictionary["enabled"] as? Bool ?? true
-        let centerOffset = offsetFrom(centerOffsetDict)
-        let textStyleDict = dictionary["textStyle"] as? [String: Any]
-        let textStyle = TextStyle.from(dictionary: textStyleDict ?? [:])
-
-        return AnnotationStyle(
-            id: id,
-            zIndex: zIndex,
-            image: image,
-            imageSize: CGSize(
-                width: imageSizeDict["width"] as? CGFloat ?? 0,
-                height: imageSizeDict["height"] as? CGFloat ?? 0),
-            centerOffset: centerOffset,
-            enabled: enabled,
-            textStyle: textStyle)
-    }
-}
-
-/// 标记点数据
-struct Annotation {
-    var key: String
-    var coordinate: CoordinatePlain
-    var title: String?
-    var styleId: String
-    var selected: Bool
-
-    static func from(dictionary: [String: Any]) -> Annotation? {
+    
+    private func trySelectAnnotation() {
         guard
-            let coordinateDict = dictionary["coordinate"] as? [String: Any],
-            let latitude = coordinateDict["latitude"] as? Double,
-            let longitude = coordinateDict["longitude"] as? Double,
-            let styleId = dictionary["styleId"] as? String
-        else {
-            return nil
-        }
-
-        let coordinate = CoordinatePlain(latitude: latitude, longitude: longitude)
-        let key = dictionary["key"] as? String ?? UUID().uuidString
-        let selected = dictionary["selected"] as? Bool ?? false
-        let title = dictionary["title"] as? String
-
-        return Annotation(
-            key: key,
-            coordinate: coordinate,
-            title: title,
-            styleId: styleId,
-            selected: selected
-        )
+            isStylesReady && isAnnotationsReady,
+            let mapView = mapView,
+            let ssAnnotations = mapView.annotations as? [SSAnnotation],
+            let selectedAnnotationId = selectedAnnotationId,
+            let selectedAnnotation = ssAnnotations.first(where: { $0.id == selectedAnnotationId })
+        else { return }
+        
+        mapView.selectAnnotation(selectedAnnotation, animated: true)
     }
 }
 
 /// 继承自 MAAnnotation 的标记点数据，用于配置 AMapView
 class SSAnnotation: NSObject, MAAnnotation {
-    var style: AnnotationStyle
+    var id: String
     var coordinate: CLLocationCoordinate2D
+    var style: AnnotationStyle
+    var image: UIImage
     var title: String?
-    var subtitle: String?
 
-    init(coordinate: CLLocationCoordinate2D, style: AnnotationStyle) {
+    init(id: String, coordinate: CLLocationCoordinate2D, style: AnnotationStyle, image: UIImage) {
+        self.id = id
         self.coordinate = coordinate
         self.style = style
+        self.image = image
         super.init()
     }
 }
@@ -220,28 +107,35 @@ class SSAnnotationView: MAAnnotationView {
 
     override init(annotation: MAAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        
+        self.isEnabled = true
+        self.canShowCallout = false
+        self.isUserInteractionEnabled = true
 
         guard let annotation = annotation as? SSAnnotation else {
             return
         }
+        
+        self.frame = CGRect(
+            origin: CGPoint.zero, size: CGSize(width: annotation.style.image.size.width, height: annotation.style.image.size.height)
+        )
 
         let overlayView = OverlayView(
-            frame: CGRect(
-                x: 0, y: 0,
-                width: annotation.style.imageSize.width,
-                height: annotation.style.imageSize.height))
+            frame: self.bounds)
 
-        overlayView.imageView.image = annotation.style.image.resized(to: annotation.style.imageSize)
+        overlayView.imageView.image = annotation.image.resized(to: CGSize(width: annotation.style.image.size.width, height: annotation.style.image.size.height))
         overlayView.label.text = annotation.title ?? ""
-        overlayView.contentOffset = annotation.style.centerOffset
-        overlayView.textOffset = annotation.style.textStyle?.offset ?? .zero
+        overlayView.contentOffset = CGPoint(x: annotation.style.centerOffset?.x ?? 0, y: annotation.style.centerOffset?.y ?? 0)
+        overlayView.textOffset = CGPoint(x: annotation.style.textStyle?.offset?.x ?? 0, y: annotation.style.textStyle?.offset?.y ?? 0)
 
-        overlayView.label.textColor = annotation.style.textStyle?.color ?? .black
-        overlayView.label.font = UIFont.systemFont(
-            ofSize: annotation.style.textStyle?.fontSize ?? 16,
-            weight: annotation.style.textStyle?.fontWeight ?? .medium)
-        overlayView.label.numberOfLines = annotation.style.textStyle?.numberOfLines ?? 1
-        overlayView.label.textAlignment = annotation.style.textStyle?.textAlign ?? .center
+        let textStyle = annotation.style.textStyle
+        
+        if let textColorString = textStyle?.color {
+            overlayView.label.textColor = UIColor(hex: textColorString)
+        }
+        overlayView.label.font = UIFont.systemFont(ofSize: textStyle?.fontSize ?? 16, weight: UIFont.Weight(string: textStyle?.fontWeight ?? "") ?? .medium)
+        overlayView.label.numberOfLines = textStyle?.numberOfLines ?? 1
+        overlayView.label.textAlignment = NSTextAlignment(string: textStyle?.textAlign ?? "") ?? .center
 
         self.addSubview(overlayView)
     }
@@ -282,8 +176,9 @@ class OverlayView: UIView {
     }
 
     private func setup() {
-        print("contentOffset", contentOffset)
-        print("textOffset", textOffset)
+        self.isUserInteractionEnabled = false
+        self.imageView.isUserInteractionEnabled = false
+        self.label.isUserInteractionEnabled = false
 
         contentView.translatesAutoresizingMaskIntoConstraints = false
         imageView.translatesAutoresizingMaskIntoConstraints = false

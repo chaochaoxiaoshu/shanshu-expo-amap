@@ -173,28 +173,30 @@ export interface AnnotationStyle {
    * zIndex 值，大值在上，默认为0
    */
   zIndex?: number
-  /**
-   * 标记点显示的图片，支持以下几种格式：
-   *
-   * - 网络资源 URL
-   * - base64 编码
-   */
-  image: string
-  /**
-   * 图片的尺寸
-   */
-  imageSize: {
-    width: number
-    height: number
+  image: {
+    /**
+     * 标记点显示的图片，支持以下几种格式：
+     *
+     * - 网络资源 URL
+     * - base64 编码
+     */
+    url: string
+    /**
+     * 图片的尺寸
+     */
+    size: {
+      width: number
+      height: number
+    }
   }
-  /**
-   * annotationView 的中心默认位于 annotation 的坐标位置，可以设置centerOffset改变view的位置，正的偏移使view朝右下方移动，负的朝左上方，单位是屏幕坐标
-   */
-  centerOffset: { x: number; y: number }
   /**
    * 文本样式
    */
   textStyle?: TextStyle
+  /**
+   * annotationView 的中心默认位于 annotation 的坐标位置，可以设置centerOffset改变view的位置，正的偏移使view朝右下方移动，负的朝左上方，单位是屏幕坐标
+   */
+  centerOffset?: { x: number; y: number }
   /**
    * 是否监听触摸事件，默认为 true
    */
@@ -208,19 +210,19 @@ export interface Annotation<S extends string = string> {
   /**
    * 标记点的唯一标识，用于标记点的引用
    */
-  key?: string
+  id: string
   /**
    * 标记点的坐标
    */
   coordinate: Coordinate
   /**
-   * 标记点的标题
-   */
-  title?: string
-  /**
    * 标记点的样式标识，引用 `annotationStyles` 中的样式
    */
   styleId: S
+  /**
+   * 标记点的标题
+   */
+  title?: string
   /**
    * 是否处于选中状态，默认为 false
    */
@@ -324,6 +326,10 @@ export interface OnRegionChangedEventPayload {
   }
 }
 
+export interface OnSelectAnnotationEventPayload {
+  id: string
+}
+
 export interface SearchInputTipsOptions {
   /**
    * 搜索关键字
@@ -345,6 +351,96 @@ export interface SearchInputTipsOptions {
    * 位置坐标，经纬度坐标，经度在前，纬度在后，用逗号分隔
    */
   location?: string
+}
+
+export interface SearchGeocodeOptions {
+  address?: string
+  city?: string
+  country?: string
+}
+
+export interface SearchReGeocodeOptions {
+  requireExtension?: boolean
+  location?: string
+  radius?: number
+  poitype?: string
+  mode?: string
+}
+
+export interface SearchGeocodeResult {
+  count: number
+  geocodes: {
+    adcode: string
+    building: string
+    city: string
+    citycode: string
+    country: string
+    district: string
+    formattedAddress: string
+    level: string
+    neighborhood: string
+    postcode: string
+    province: string
+    township: string
+  }[]
+}
+
+export interface SearchReGeocodeResult {
+  formattedAddress: string
+  addressComponent: {
+    adcode: string
+    building: string
+    city: string
+    citycode: string
+    country: string
+    countryCode: string
+    district: string
+    neighborhood: string
+    province: string
+    towncode: string
+    township: string
+  }
+  aois: {
+    adcode: string
+    name: string
+    type: string
+    uid: string
+  }[]
+  pois: {
+    adcode: string
+    address: string
+    businessArea: string
+    city: string
+    citycode: string
+    direction: string
+    district: string
+    email: string
+    gridcode: string
+    name: string
+    naviPOIId: string
+    parkingType: string
+    pcode: string
+    postcode: string
+    province: string
+    shopID: string
+    tel: string
+    type: string
+    typecode: string
+    uid: string
+    website: string
+  }[]
+  roadinters: {
+    direction: string
+    firstId: string
+    firstName: string
+    secondId: string
+    secondName: string
+  }[]
+  roads: {
+    direction: string
+    name: string
+    uid: string
+  }[]
 }
 
 export interface SearchInputTip {
@@ -630,6 +726,7 @@ export interface ShanshuExpoMapViewProps<
   userTrackingMode: UserTrackingMode
   annotationStyles?: Styles
   annotations?: Annotation<Styles[number]['id']>[]
+  selectedAnnotationId?: string
   polylineSegments?: PolylineSegment[]
   /**
    * 地图加载成功事件
@@ -638,5 +735,8 @@ export interface ShanshuExpoMapViewProps<
   onZoom?: (event: { nativeEvent: OnZoomEventPayload }) => void
   onRegionChanged?: (event: {
     nativeEvent: OnRegionChangedEventPayload
+  }) => void
+  onSelectAnnotation?: (event: {
+    nativeEvent: OnSelectAnnotationEventPayload
   }) => void
 }

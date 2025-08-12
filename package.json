@@ -1,6 +1,6 @@
 {
   "name": "shanshu-expo-amap",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "高德地图 Expo 模块",
   "main": "build/index.js",
   "types": "build/index.d.ts",

@@ -2,6 +2,16 @@ import AMapSearchKit
 import ExpoModulesCore
 import UIKit
 
+struct Size: Record {
+    @Field var width: Double
+    @Field var height: Double
+}
+
+struct Point: Record {
+    @Field var x: Double
+    @Field var y: Double
+}
+
 struct CoordinatePlain {
     var latitude: Double
     var longitude: Double
@@ -25,12 +35,59 @@ struct PolylineSegment: Record {
     @Field var style: PolylineStyle
 }
 
+struct TextStyle: Record {
+    @Field var color: String?
+    @Field var fontSize: Double?
+    @Field var fontWeight: String?
+    @Field var fontFamily: String?
+    @Field var lineHeight: String?
+    @Field var numberOfLines: Int?
+    @Field var textAlign: String?
+    @Field var offset: Point?
+}
+
+struct AnnotationImage: Record {
+    @Field var url: String
+    @Field var size: Size
+}
+
+struct AnnotationStyle: Record {
+    @Field var id: String
+    @Field var zIndex: Int?
+    @Field var image: AnnotationImage
+    @Field var textStyle: TextStyle?
+    @Field var centerOffset: Point?
+    @Field var enabled: Bool?
+}
+
+struct Annotation: Record {
+    @Field var id: String
+    @Field var coordinate: Coordinate
+    @Field var styleId: String
+    @Field var title: String?
+    @Field var selected: Bool?
+}
+
 struct SearchInputTipsOptions: Record {
     @Field var keywords: String
     @Field var city: String?
     @Field var types: String?
     @Field var cityLimit: Bool?
     @Field var location: String?
+}
+
+struct SearchGeocodeOptions: Record {
+    @Field var address: String?
+    @Field var city: String?
+    @Field var country: String?
+}
+
+struct SearchReGeocodeOptions: Record {
+    @Field var requireExtension: Bool?
+    @Field var location: Coordinate?
+    @Field var radius: Int?
+    @Field var poitype: String?
+    @Field var mode: String?
 }
 
 enum DrivingRouteShowFieldType: String, Enumerable {
@@ -106,7 +163,8 @@ struct SearchTransitRouteOptions: Record {
     @Field var showFieldType: TransitRouteShowFieldType = .polyline
 }
 
-// MARK: - UIColor Hex 支持
+// MARK: - Extensions
+
 extension UIColor {
     convenience init(hex: String) {
         var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -131,6 +189,48 @@ extension UIColor {
             )
         } else {
             self.init(white: 0, alpha: 1)
+        }
+    }
+}
+
+extension UIFont.Weight {
+    init?(string: String) {
+        switch string.lowercased() {
+        case "normal", "400":
+            self = .regular
+        case "bold", "700":
+            self = .bold
+        case "100":
+            self = .ultraLight
+        case "200":
+            self = .thin
+        case "300":
+            self = .light
+        case "500":
+            self = .medium
+        case "600":
+            self = .semibold
+        case "800":
+            self = .heavy
+        case "900":
+            self = .black
+        default:
+            return nil
+        }
+    }
+}
+
+extension NSTextAlignment {
+    init?(string: String) {
+        switch string.lowercased() {
+        case "left":
+            self = .left
+        case "center":
+            self = .center
+        case "right":
+            self = .right
+        default:
+            return nil
         }
     }
 }

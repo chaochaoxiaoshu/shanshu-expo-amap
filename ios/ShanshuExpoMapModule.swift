@@ -74,6 +74,14 @@ public class ShanshuExpoMapModule: Module {
         AsyncFunction("searchInputTips") { (options: SearchInputTipsOptions, promise: Promise) -> Void in
             searchManager?.searchInputTips(options, promise)
         }
+        
+        AsyncFunction("searchGeocode") { (options: SearchGeocodeOptions, promise: Promise) -> Void in
+            searchManager?.searchGeocode(options, promise)
+        }
+        
+        AsyncFunction("searchReGeocode") { (options: SearchReGeocodeOptions, promise: Promise) -> Void in
+            searchManager?.searchReGeocode(options, promise)
+        }
 
         AsyncFunction("searchDrivingRoute") { (options: SearchDrivingRouteOptions, promise: Promise) -> Void in
             searchManager?.searchDrivingRoute(options, promise)
@@ -92,7 +100,7 @@ public class ShanshuExpoMapModule: Module {
         }
 
         View(ShanshuExpoMapView.self) {
-            Events("onLoad", "onZoom", "onRegionChanged")
+            Events("onLoad", "onZoom", "onRegionChanged", "onSelectAnnotation")
 
             Prop("mapType") { (view, mapType: Int) in
                 view.setMapType(mapType)
@@ -106,12 +114,16 @@ public class ShanshuExpoMapModule: Module {
                 view.setUserTrackingMode(userTrackingMode)
             }
 
-            Prop("annotationStyles") { (view, styles: [[String: Any]]) in
+            Prop("annotationStyles") { (view, styles: [AnnotationStyle]) in
                 view.setAnnotationStyles(styles)
             }
 
-            Prop("annotations") { (view, annotations: [[String: Any]]) in
+            Prop("annotations") { (view, annotations: [Annotation]) in
                 view.setAnnotations(annotations)
+            }
+            
+            Prop("selectedAnnotationId") { (view, selectedAnnotationId: String) in
+                view.setSelectedAnnotationId(selectedAnnotationId)
             }
 
             Prop("polylineSegments") { (view, segments: [PolylineSegment]) in

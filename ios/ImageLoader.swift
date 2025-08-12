@@ -78,4 +78,20 @@ class ImageLoader {
             completion(results)
         }
     }
+    
+    static func loadMultiple(from values: [Any?]) async -> [UIImage?] {
+        await withTaskGroup(of: (Int, UIImage?).self) { group in
+            for (index, value) in values.enumerated() {
+                group.addTask {
+                    let image = await from(value)
+                    return (index, image)
+                }
+            }
+            var results = [UIImage?](repeating: nil, count: values.count)
+            for await (index, image) in group {
+                results[index] = image
+            }
+            return results
+        }
+    }
 }

@@ -7,8 +7,12 @@ import {
   OnRouteSearchDoneResult,
   RequestLocationResult,
   SearchDrivingRouteOptions,
+  SearchGeocodeOptions,
+  SearchGeocodeResult,
   SearchInputTipsOptions,
   SearchInputTipsResult,
+  SearchReGeocodeOptions,
+  SearchReGeocodeResult,
   SearchRidingRouteOptions,
   SearchTransitRouteOptions,
   SearchWalkingRouteOptions,
@@ -39,6 +43,18 @@ declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEven
   searchInputTips: (
     options: SearchInputTipsOptions
   ) => Promise<SearchInputTipsResult> | undefined
+  /**
+   * 地理编码请求
+   */
+  searchGeocode: (
+    options: SearchGeocodeOptions
+  ) => Promise<SearchGeocodeResult> | undefined
+  /**
+   * 逆地理编码请求
+   */
+  searchReGeocode: (
+    options: SearchReGeocodeOptions
+  ) => Promise<SearchReGeocodeResult> | undefined
   /**
    * 规划驾车路线
    *

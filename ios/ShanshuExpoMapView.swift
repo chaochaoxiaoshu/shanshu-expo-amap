@@ -15,6 +15,7 @@ class ShanshuExpoMapView: ExpoView {
     private let onLoad = EventDispatcher()
     private let onZoom = EventDispatcher()
     private let onRegionChanged = EventDispatcher()
+    private let onSelectAnnotation = EventDispatcher()
 
     private let setCenterHandler = PromiseDelegateHandler<Void>()
 
@@ -94,21 +95,16 @@ class ShanshuExpoMapView: ExpoView {
         }
     }
 
-    func setAnnotationStyles(_ styles: [[String: Any]]) {
-        var stylesWithImages = styles.map { $0 }
-        let imageSources = styles.map { $0["image"] }
-        ImageLoader.loadMultiple(from: imageSources) { images in
-            for (index, image) in images.enumerated() {
-                stylesWithImages[index]["image"] = image
-            }
-            DispatchQueue.main.async {
-                self.annotationManager.setStyles(stylesWithImages)
-            }
-        }
+    func setAnnotationStyles(_ styles: [AnnotationStyle]) {
+        annotationManager.setStyles(styles)
     }
 
-    func setAnnotations(_ annotations: [[String: Any]]) {
+    func setAnnotations(_ annotations: [Annotation]) {
         annotationManager.setAnnotations(annotations)
+    }
+    
+    func setSelectedAnnotationId(_ id: String) {
+        annotationManager.setSelectedAnnotationId(id)
     }
 
     func setPolylineSegments(_ segments: [PolylineSegment]) {
@@ -158,7 +154,7 @@ extension ShanshuExpoMapView: MAMapViewDelegate {
     // 渲染标记的回调
     func mapView(_ mapView: MAMapView!, viewFor annotation: MAAnnotation!) -> MAAnnotationView! {
         if let annotation = annotation as? SSAnnotation {
-            let reuseId = "SSAnnotationView_\(annotation.style.hashValue)"
+            let reuseId = "SSAnnotationView_\(annotation.style.id)"
             var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId)
             if view == nil {
                 view = SSAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
@@ -169,6 +165,22 @@ extension ShanshuExpoMapView: MAMapViewDelegate {
             return view!
         }
         return nil
+    }
+    
+    func mapView(_ mapView: MAMapView!, didAnnotationViewTapped view: MAAnnotationView!) {
+        if let ssAnnotation = view.annotation as? SSAnnotation {
+            onSelectAnnotation([
+                "id": ssAnnotation.id
+            ])
+        }
+    }
+    
+    func mapView(_ mapView: MAMapView!, didSelect view: MAAnnotationView!) {
+        if let ssAnnotation = view.annotation as? SSAnnotation {
+            onSelectAnnotation([
+                "id": ssAnnotation.id
+            ])
+        }
     }
 
     // 渲染覆盖物的回调

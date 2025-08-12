@@ -7,6 +7,9 @@ class SearchManager: NSObject {
     
     private let inputTipsSearchHandler = PromiseDelegateHandler<[String: Any]>()
     
+    private let geocodeSearchHandler = PromiseDelegateHandler<[String: Any]>()
+    private let reGeocodeSearchHandler = PromiseDelegateHandler<[String: Any]>()
+    
     private let drivingSearchHandler = PromiseDelegateHandler<[String: Any]>()
     private let walkingSearchHandler = PromiseDelegateHandler<[String: Any]>()
     private let ridingSearchHandler = PromiseDelegateHandler<[String: Any]>()
@@ -37,6 +40,52 @@ class SearchManager: NSObject {
         request.types = options.types
         
         search.aMapInputTipsSearch(request)
+    }
+    
+    func searchGeocode(_ options: SearchGeocodeOptions, _ promise: Promise) {
+        guard let search = search else {
+            promise.reject("E_SEARCH_DELEGATE_NOT_FOUND", "搜索委托未初始化")
+            return
+        }
+        
+        geocodeSearchHandler.begin(
+            resolve: { value in promise.resolve(value) },
+            reject: { code, message, error in
+                promise.reject(code, message)
+            }
+        )
+        
+        let request = AMapGeocodeSearchRequest()
+        request.address = options.address
+        request.city = options.city
+        request.country = options.country
+        
+        search.aMapGeocodeSearch(request)
+    }
+    
+    func searchReGeocode(_ options: SearchReGeocodeOptions, _ promise: Promise) {
+        guard let search = search else {
+            promise.reject("E_SEARCH_DELEGATE_NOT_FOUND", "搜索委托未初始化")
+            return
+        }
+        
+        reGeocodeSearchHandler.begin(
+            resolve: { value in promise.resolve(value) },
+            reject: { code, message, error in
+                promise.reject(code, message)
+            }
+        )
+        
+        let request = AMapReGeocodeSearchRequest()
+        if let location = options.location {
+            request.location = AMapGeoPoint.location(withLatitude: location.latitude, longitude: location.longitude)
+        }
+        request.mode = options.mode
+        request.poitype = options.poitype
+        request.radius = options.radius ?? 1000
+        request.requireExtension = options.requireExtension ?? false
+        
+        search.aMapReGoecodeSearch(request)
     }
     
     func searchDrivingRoute(_ options: SearchDrivingRouteOptions, _ promise: Promise) {
@@ -228,6 +277,106 @@ extension SearchManager: AMapSearchDelegate {
                 ]
             }),
             "count": response.count
+        ])
+    }
+    
+    func onGeocodeSearchDone(_ request: AMapGeocodeSearchRequest!, response: AMapGeocodeSearchResponse!) {
+        guard let response = response else {
+            geocodeSearchHandler.finishFailure(code: "1", message: "无效的响应数据")
+            return
+        }
+        
+        geocodeSearchHandler.finishSuccess([
+            "count": response.count,
+            "geocodes": response.geocodes.compactMap({ geocode in
+                [
+                    "adcode": geocode.adcode,
+                    "building": geocode.building,
+                    "city": geocode.city,
+                    "citycode": geocode.citycode,
+                    "country": geocode.country,
+                    "district": geocode.district,
+                    "formattedAddress": geocode.formattedAddress,
+                    "level": geocode.level,
+                    "neighborhood":geocode.neighborhood,
+                    "postcode": geocode.postcode,
+                    "province": geocode.province,
+                    "township": geocode.township,
+                ]
+            })
+        ])
+    }
+    
+    func onReGeocodeSearchDone(_ request: AMapReGeocodeSearchRequest!, response: AMapReGeocodeSearchResponse!) {
+        guard let response = response else {
+            reGeocodeSearchHandler.finishFailure(code: "1", message: "无效的响应数据")
+            return
+        }
+        
+        reGeocodeSearchHandler.finishSuccess([
+            "formattedAddress": response.regeocode.formattedAddress ?? "",
+            "addressComponent": [
+                "adcode": response.regeocode.addressComponent.adcode,
+                "building": response.regeocode.addressComponent.building,
+                "city": response.regeocode.addressComponent.city,
+                "citycode": response.regeocode.addressComponent.citycode,
+                "country": response.regeocode.addressComponent.country,
+                "countryCode": response.regeocode.addressComponent.countryCode,
+                "district": response.regeocode.addressComponent.district,
+                "neighborhood": response.regeocode.addressComponent.neighborhood,
+                "province": response.regeocode.addressComponent.province,
+                "towncode": response.regeocode.addressComponent.towncode,
+                "township": response.regeocode.addressComponent.township
+            ],
+            "aois": response.regeocode.aois.compactMap({ aoi in
+                [
+                    "adcode": aoi.adcode,
+                    "name": aoi.name,
+                    "type": aoi.type,
+                    "uid": aoi.uid
+                ]
+            }),
+            "pois": response.regeocode.pois.compactMap({ aoi in
+                [
+                    "adcode": aoi.adcode,
+                    "address": aoi.address,
+                    "businessArea": aoi.businessArea,
+                    "city": aoi.city,
+                    "citycode": aoi.citycode,
+                    "direction": aoi.direction,
+                    "district": aoi.district,
+                    "email": aoi.email,
+                    "gridcode": aoi.gridcode,
+                    "name": aoi.name,
+                    "naviPOIId": aoi.naviPOIId,
+                    "parkingType": aoi.parkingType,
+                    "pcode": aoi.pcode,
+                    "postcode": aoi.postcode,
+                    "province": aoi.province,
+                    "shopID": aoi.shopID,
+                    "tel": aoi.tel,
+                    "type": aoi.type,
+                    "typecode": aoi.typecode,
+                    "uid": aoi.uid,
+                    "website": aoi.website
+                ]
+            }),
+            "roadinters": response.regeocode.roadinters.compactMap({ roadInter in
+                [
+                    "direction": roadInter.direction,
+                    "firstId": roadInter.firstId,
+                    "firstName": roadInter.firstName,
+                    "secondId": roadInter.secondId,
+                    "secondName": roadInter.secondName
+                ]
+            }),
+            "roads": response.regeocode.roads.compactMap({ road in
+                [
+                    "direction": road.direction,
+                    "name": road.name,
+                    "uid": road.uid
+                ]
+            })
         ])
     }
 

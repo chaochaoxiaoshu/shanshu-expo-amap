@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { View, Button } from 'react-native'
 import ShanshuExpoMapModule, {
+  Annotation,
   ShanshuExpoMapView,
   type ShanshuExpoMapViewRef
 } from 'shanshu-expo-map'
@@ -8,50 +9,48 @@ import ShanshuExpoMapModule, {
 const exampleAnnotationStyles = [
   {
     id: 'style1',
-    image:
-      'https://qiniu.zdjt.com/shop/2025-07-24/e84b870f7c916a381afe91c974243cb5.jpg',
-    imageSize: {
-      width: 100,
-      height: 30
+    image: {
+      url: 'https://qiniu.zdjt.com/shop/2025-07-24/e84b870f7c916a381afe91c974243cb5.jpg',
+      size: {
+        width: 100,
+        height: 30
+      }
     },
-    centerOffset: { x: -50, y: -30 },
     textStyle: {
       color: '#FF0000',
-      fontSize: 20,
-      offset: { x: 0, y: 0 }
-    }
+      fontSize: 20
+    },
+    centerOffset: { x: -50, y: -30 }
   },
   {
     id: 'style2',
-    image:
-      'https://qiniu.zdjt.com/shop/2025-07-11/561658b79acbc0b3c8350c75b4d3eba0.png',
-    imageSize: {
-      width: 30,
-      height: 30
+    image: {
+      url: 'https://qiniu.zdjt.com/shop/2025-07-11/561658b79acbc0b3c8350c75b4d3eba0.png',
+      size: {
+        width: 30,
+        height: 30
+      }
     },
-    centerOffset: { x: -15, y: -30 },
     textStyle: {
       color: '#00FF00',
-      fontSize: 20,
-      offset: { x: 0, y: 0 }
-    }
+      fontSize: 20
+    },
+    centerOffset: { x: -15, y: -30 }
   }
 ]
 
-const exampleAnnotations = [
+const exampleAnnotations: Annotation[] = [
   {
-    key: 'annotation1',
+    id: 'annotation1',
     coordinate: { latitude: 31.230545, longitude: 121.473724 },
     title: '起点',
-    styleId: 'style1',
-    selected: true
+    styleId: 'style1'
   },
   {
-    key: 'annotation2',
+    id: 'annotation2',
     coordinate: { latitude: 31.223257, longitude: 121.471266 },
     title: '终点',
-    styleId: 'style2',
-    selected: true
+    styleId: 'style2'
   }
 ]
 
@@ -97,6 +96,31 @@ const examplePolylineSegments = [
 async function getLocation() {
   const location = await ShanshuExpoMapModule.requestLocation()
   console.log('location', location)
+}
+
+async function handleSearchGeocode() {
+  try {
+    const result = await ShanshuExpoMapModule.searchGeocode({
+      address: '上海市浦东新区世纪大道 2000 号'
+    })
+    console.log('geocode result', result)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+}
+
+async function handleSearchReGeocode() {
+  try {
+    const result = await ShanshuExpoMapModule.searchReGeocode({
+      location: '31.230545,121.473724',
+      radius: 1000,
+      poitype: 'bank',
+      mode: 'all'
+    })
+    console.log('regeocode result', result)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
 }
 
 async function handleSearchInputTips() {
@@ -169,13 +193,8 @@ async function handleSearchTransitRoute() {
 export default function App() {
   const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
 
-  useEffect(() => {
-    try {
-      mapViewRef.current?.setZoomLevel(16)
-    } catch (error) {
-      console.log((error as Error).message)
-    }
-  }, [])
+  const [annotations, setAnnotations] = useState(exampleAnnotations)
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string>()
 
   return (
     <View style={{ position: 'relative', flex: 1 }}>
@@ -186,13 +205,21 @@ export default function App() {
         showUserLocation={true}
         userTrackingMode={0}
         annotationStyles={exampleAnnotationStyles}
-        annotations={exampleAnnotations}
+        annotations={annotations}
         polylineSegments={examplePolylineSegments}
+        selectedAnnotationId={selectedAnnotationId}
         onLoad={(event) => {
           console.log('🗺️ 地图加载成功:', event.nativeEvent)
         }}
         onZoom={(event) => {
           console.log('🗺️ 地图缩放:', event.nativeEvent)
+        }}
+        onRegionChanged={(event) => {
+          console.log('🗺️ 地图区域变化:', event.nativeEvent)
+        }}
+        onSelectAnnotation={(event) => {
+          console.log('🗺️ 选中标记点:', event.nativeEvent)
+          setSelectedAnnotationId(event.nativeEvent.id)
         }}
       />
       <View
@@ -211,6 +238,8 @@ export default function App() {
         }}
       >
         <Button title='获取定位' onPress={getLocation} />
+        <Button title='地理编码' onPress={handleSearchGeocode} />
+        <Button title='逆地理编码' onPress={handleSearchReGeocode} />
         <Button title='关键字搜索' onPress={handleSearchInputTips} />
         <Button title='规划驾车路线' onPress={handleSearchDrivingRoute} />
         <Button title='规划步行路线' onPress={handleSearchWalkingRoute} />
