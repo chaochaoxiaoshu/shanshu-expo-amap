@@ -5,7 +5,10 @@ import ExpoModulesCore
 import MAMapKit
 
 class ShanshuExpoMapView: ExpoView {
-    private let mapView = MAMapView()
+    let mapView = MAMapView()
+    
+    // 是否已经设置了初始 region
+    var regionSetted: Bool = false
 
     private var markerManager: MarkerManager!
     private var polylineManager: PolylineManager!
@@ -15,7 +18,7 @@ class ShanshuExpoMapView: ExpoView {
     private let onLoad = EventDispatcher()
     private let onZoom = EventDispatcher()
     private let onRegionChanged = EventDispatcher()
-    private let onSelectAnnotation = EventDispatcher()
+    private let onTapMarker = EventDispatcher()
 
     private let setCenterHandler = PromiseDelegateHandler<Void>()
 
@@ -30,11 +33,6 @@ class ShanshuExpoMapView: ExpoView {
     private func setupMapView() {
         mapView.delegate = self
         mapView.showsScale = true
-
-        // let coordinate = CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
-        // let region = MACoordinateRegion(
-        //   center: coordinate, span: MACoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
-        // mapView.setRegion(region, animated: false)
 
         addSubview(mapView)
     }
@@ -53,6 +51,10 @@ class ShanshuExpoMapView: ExpoView {
     }
 
     // MARK: - 地图命令式方法
+    
+    func setRegion(_ region: Region, animated: Bool?) {
+        mapView.setRegion(MACoordinateRegion(center: CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude), span: MACoordinateSpan(latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta)), animated: animated ?? false)
+    }
 
     func setCenter(latitude: Double?, longitude: Double?, promise: Promise) {
         setCenterHandler.begin(
@@ -76,18 +78,6 @@ class ShanshuExpoMapView: ExpoView {
         setCenterHandler.finishSuccess(Void())
     }
 
-    func setZoomLevel(_ zoomLevel: Int) {
-        mapView.setZoomLevel(CGFloat(zoomLevel), animated: true)
-    }
-
-    func setMapType(_ mapType: Int) {
-        mapView.mapType = MAMapType(rawValue: mapType) ?? .standard
-    }
-
-    func setShowUserLocation(_ showUserLocation: Bool) {
-        mapView.showsUserLocation = showUserLocation
-    }
-
     func setUserTrackingMode(_ userTrackingMode: Int) {
         if let userTrackingMode = MAUserTrackingMode(rawValue: userTrackingMode) {
             mapView.userTrackingMode = userTrackingMode
@@ -101,6 +91,27 @@ class ShanshuExpoMapView: ExpoView {
 
     func setPolylines(_ polylines: [Polyline]) {
         polylineManager.setPolylines(polylines)
+    }
+    
+    func setCustomStyle(_ customStyle: CustomStyle) {
+        mapView.customMapStyleEnabled = customStyle.enabled
+        let styleOptions = MAMapCustomStyleOptions()
+        if let styleData = customStyle.styleData {
+            styleOptions.styleData = Data(styleData)
+        }
+        if let styleExtraData = customStyle.styleExtraData {
+            styleOptions.styleExtraData = Data(styleExtraData)
+        }
+        mapView.setCustomMapStyleOptions(styleOptions)
+    }
+    
+    func setLanguage(_ language: String) {
+        if language == "english" {
+            mapView.mapLanguage = NSNumber(value: 1)
+        }
+        if language == "chinese" {
+            mapView.mapLanguage = NSNumber(value: 0)
+        }
     }
 }
 
@@ -145,96 +156,111 @@ extension ShanshuExpoMapView: MAMapViewDelegate {
 
     // 渲染标记的回调
     func mapView(_ mapView: MAMapView!, viewFor annotation: MAAnnotation!) -> MAAnnotationView! {
-        guard let annotation = annotation as? SSAnnotation else { return nil }
-        guard let marker = markerManager.getMarker(id: annotation.id) else { return nil }
         
-        if let image = marker.image {
-            let reuseId = "SSAnnotationView_\(annotation.id)"
-            var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId) as? TextAnnotationView
-            if view == nil {
-                view = TextAnnotationView(annotation: annotation, reuseIdentifier: reuseId, textStyle: marker.textStyle, textOffset: CGPoint(x: marker.textOffset?.x ?? 0, y: marker.textOffset?.y ?? 0))
-            } else {
-                view?.annotation = annotation
-            }
-            view?.setText(marker.title ?? annotation.title)
-            
-            Task { [weak view] in
-                let uiImage = await ImageLoader.from(image.url)
-                DispatchQueue.main.async {
-                    view?.image = uiImage?.resized(to: CGSize(width: image.size.width, height: image.size.height))
-                    view?.setNeedsLayout()
+        if let annotation = annotation as? SSAnnotation, let marker = markerManager.getMarker(id: annotation.id) {
+            if let image = marker.image {
+                let reuseId = "TextAnnotationView"
+                var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId) as? TextAnnotationView
+                if view == nil {
+                    view = TextAnnotationView(annotation: annotation, reuseIdentifier: reuseId, textStyle: marker.textStyle, textOffset: CGPoint(x: marker.textOffset?.x ?? 0, y: marker.textOffset?.y ?? 0))
+                } else {
+                    view?.annotation = annotation
                 }
-            }
-            if let zIndex = marker.zIndex {
-                view?.zIndex = zIndex
-            }
-            if let centerOffset = marker.centerOffset {
-                view?.centerOffset = CGPoint(x: centerOffset.x, y: centerOffset.y)
-            }
-            if let calloutOffset = marker.calloutOffset {
-                view?.calloutOffset = CGPoint(x: calloutOffset.x, y: calloutOffset.y)
-            }
-            if let enabled = marker.enabled {
-                view?.isEnabled = enabled
-            }
-            if let highlighted = marker.highlighted {
-                view?.isHighlighted = highlighted
-            }
-            if let canShowCallout = marker.canShowCallout {
-                view?.canShowCallout = canShowCallout
-            }
-            if let draggable = marker.draggable {
-                view?.isDraggable = draggable
-            }
-            if let canAdjustPosition = marker.canAdjustPosition {
-                view?.canAdjustPositon = canAdjustPosition
-            }
-            
-            return view
-        } else {
-            let reuseId = "PinAnnotation_\(annotation.id)"
-            var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId)
-            if view == nil {
-                view = MAPinAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
+                view?.setText(marker.title ?? annotation.title)
+                
+                Task { [weak view] in
+                    let uiImage = await ImageLoader.from(image.url)
+                    let resized = uiImage?.resized(to: CGSize(width: image.size.width, height: image.size.height))
+                    DispatchQueue.main.async {
+                        print("设置了图片")
+                        view?.setImage(resized, url: image.url)
+                    }
+                }
+                if let zIndex = marker.zIndex {
+                    view?.zIndex = zIndex
+                }
+                if let centerOffset = marker.centerOffset {
+                    view?.centerOffset = CGPoint(x: centerOffset.x, y: centerOffset.y)
+                }
+                if let calloutOffset = marker.calloutOffset {
+                    view?.calloutOffset = CGPoint(x: calloutOffset.x, y: calloutOffset.y)
+                }
+                if let enabled = marker.enabled {
+                    view?.isEnabled = enabled
+                }
+                if let highlighted = marker.highlighted {
+                    view?.isHighlighted = highlighted
+                }
+                if let canShowCallout = marker.canShowCallout {
+                    view?.canShowCallout = canShowCallout
+                }
+                if let draggable = marker.draggable {
+                    view?.isDraggable = draggable
+                }
+                if let canAdjustPosition = marker.canAdjustPosition {
+                    view?.canAdjustPositon = canAdjustPosition
+                }
+                
+                return view
             } else {
-                view?.annotation = annotation
+                let reuseId = "PinAnnotationView"
+                var view = mapView.dequeueReusableAnnotationView(withIdentifier: reuseId) as? MAPinAnnotationView
+                if view == nil {
+                    view = MAPinAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
+                } else {
+                    view?.annotation = annotation
+                }
+                
+                if let pinColor = marker.pinColor {
+                    view?.pinColor = MAPinAnnotationColor(rawValue: pinColor) ?? .red
+                }
+                if let zIndex = marker.zIndex {
+                    view?.zIndex = zIndex
+                }
+                if let centerOffset = marker.centerOffset {
+                    view?.centerOffset = CGPoint(x: centerOffset.x, y: centerOffset.y)
+                }
+                if let calloutOffset = marker.calloutOffset {
+                    view?.calloutOffset = CGPoint(x: calloutOffset.x, y: calloutOffset.y)
+                }
+                if let enabled = marker.enabled {
+                    view?.isEnabled = enabled
+                }
+                if let highlighted = marker.highlighted {
+                    view?.isHighlighted = highlighted
+                }
+                if let canShowCallout = marker.canShowCallout {
+                    view?.canShowCallout = canShowCallout
+                }
+                if let draggable = marker.draggable {
+                    view?.isDraggable = draggable
+                }
+                if let canAdjustPosition = marker.canAdjustPosition {
+                    view?.canAdjustPositon = canAdjustPosition
+                }
+                
+                return view
             }
-            
-            if let zIndex = marker.zIndex {
-                view?.zIndex = zIndex
-            }
-            if let centerOffset = marker.centerOffset {
-                view?.centerOffset = CGPoint(x: centerOffset.x, y: centerOffset.y)
-            }
-            if let calloutOffset = marker.calloutOffset {
-                view?.calloutOffset = CGPoint(x: calloutOffset.x, y: calloutOffset.y)
-            }
-            if let enabled = marker.enabled {
-                view?.isEnabled = enabled
-            }
-            if let highlighted = marker.highlighted {
-                view?.isHighlighted = highlighted
-            }
-            if let canShowCallout = marker.canShowCallout {
-                view?.canShowCallout = canShowCallout
-            }
-            if let draggable = marker.draggable {
-                view?.isDraggable = draggable
-            }
-            if let canAdjustPosition = marker.canAdjustPosition {
-                view?.canAdjustPositon = canAdjustPosition
-            }
-            
-            return view
         }
+        return nil
     }
     
     func mapView(_ mapView: MAMapView!, didAnnotationViewTapped view: MAAnnotationView!) {
+        guard
+            let view = view as? TextAnnotationView,
+            let annotation = view.annotation as? SSAnnotation,
+            let marker = markerManager.getMarker(id: annotation.id)
+        else { return }
         
-    }
-    
-    func mapView(_ mapView: MAMapView!, didSelect view: MAAnnotationView!) {
+        let point = mapView.convert(annotation.coordinate, toPointTo: mapView)
         
+        onTapMarker([
+            "id": marker.id,
+            "point": [
+                "x": point.x,
+                "y": point.y
+            ]
+        ])
     }
 
     // 渲染覆盖物的回调
@@ -288,11 +314,9 @@ extension ShanshuExpoMapView: MAMapViewDelegate {
                     Task {
                         let image = await ImageLoader.from(textureImage)
                         renderer.strokeImage = image
-                        mapView.setNeedsDisplay()
                     }
                 }
             }
-            print("画了一条线")
             return renderer
         }
         return nil

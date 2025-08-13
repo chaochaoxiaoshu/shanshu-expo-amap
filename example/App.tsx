@@ -113,6 +113,7 @@ export default function App() {
         ref={mapViewRef}
         style={{ flex: 1 }}
         mapType={0}
+        showCompass={false}
         showUserLocation={true}
         userTrackingMode={0}
         onLoad={(event) => {
@@ -123,6 +124,9 @@ export default function App() {
         }}
         onRegionChanged={(event) => {
           console.log('🗺️ 地图区域变化:', event.nativeEvent)
+        }}
+        onTapMarker={(event) => {
+          console.log('🗺️ 地图点击标记:', event.nativeEvent)
         }}
       >
         <Marker
@@ -153,6 +157,29 @@ export default function App() {
           title='闪数科技'
           subtitle='闪数科技'
           canAdjustPosition
+          canShowCallout
+        />
+        <Marker
+          id='marker3'
+          coordinate={{ latitude: 31.227265, longitude: 121.479399 }}
+          title='飞书'
+          subtitle='闪数科技'
+          canShowCallout
+          image={{
+            url: 'https://qiniu.zdjt.com/shop/2025-07-24/e84b870f7c916a381afe91c974243cb5.jpg',
+            size: {
+              width: 100,
+              height: 30
+            }
+          }}
+          centerOffset={{
+            x: 0,
+            y: -15
+          }}
+          textStyle={{
+            fontSize: 24,
+            color: '#FF0000'
+          }}
         />
         <Polyline
           coordinates={[

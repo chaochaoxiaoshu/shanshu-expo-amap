@@ -1,5 +1,5 @@
 import { ViewProps } from 'react-native'
-import { Coordinate } from './base'
+import { Coordinate, Region } from './base'
 
 /**
  * 地图的缩放级别的范围从 3 到 20 ，共 18 个级别
@@ -212,7 +212,29 @@ export interface MarkerData {
    * 弹出默认弹出框时，是否允许地图调整到合适位置来显示弹出框，默认为 true
    */
   canAdjustPosition?: boolean
+  /**
+   * 文本样式
+   */
   textStyle?: TextStyle
+  /**
+   * 大头针颜色，只有在 image 为空时才生效
+   */
+  pinColor?: string
+}
+
+export interface CustomStyleOptions {
+  /**
+   * 是否启用自定义样式
+   */
+  enabled: boolean
+  /**
+   * 自定义样式的二进制数据，对应下载的自定义地图文件中的style.data中的二进制数据
+   */
+  styleData?: Uint8Array
+  /**
+   * 自定义扩展样式的二进制数据,对应下载的自定义地图文件中的style_extra.data中的二进制数据
+   */
+  styleExtraData?: Uint8Array
 }
 
 export interface OnLoadEventPayload {
@@ -231,6 +253,11 @@ export interface OnRegionChangedEventPayload {
     latitudeDelta: number
     longitudeDelta: number
   }
+}
+
+export interface OnTapMarkerEventPayload {
+  id: string
+  point: { x: number; y: number }
 }
 
 export interface ShanshuExpoMapViewRef {
@@ -262,6 +289,18 @@ export interface ShanshuExpoMapViewRef {
 export interface ShanshuExpoMapViewProps extends ViewProps {
   ref?: React.Ref<ShanshuExpoMapViewRef>
   /**
+   * 地图显示的区域，该区域由中心坐标和显示的坐标范围定义
+   */
+  region?: Region
+  /**
+   * 地图显示的初始区域，非受控属性，在组件挂载后更改此属性不会导致区域变化
+   */
+  initialRegion?: Region
+  /**
+   * 限制地图显示的区域
+   */
+  limitedRegion?: Region
+  /**
    * 地图类型
    *
    * - 0: 普通地图
@@ -273,9 +312,13 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
    */
   mapType?: MapType
   /**
+   * 是否显示指南针，默认为 true
+   */
+  showCompass?: boolean
+  /**
    * 是否显示用户位置
    */
-  showUserLocation: boolean
+  showUserLocation?: boolean
   /**
    * 用户位置更新模式
    *
@@ -285,10 +328,31 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
    *
    * 如果设置了 center，则地图会忽略用户位置更新
    */
-  userTrackingMode: UserTrackingMode
+  userTrackingMode?: UserTrackingMode
+  /**
+   * 显示在地图上的标记点
+   */
   markers?: MarkerData[]
-  selectedMarkerId?: string
+  /**
+   * 显示在地图上的折线
+   */
   polylines?: PolylineData[]
+  /**
+   * 自定义样式
+   */
+  customStyle?: CustomStyleOptions
+  /**
+   * 地图语言
+   */
+  language?: 'chinese' | 'english'
+  /**
+   * 最小缩放级别
+   */
+  minZoomLevel?: number
+  /**
+   * 最大缩放级别
+   */
+  maxZoomLevel?: number
   /**
    * 地图加载成功事件
    */
@@ -297,4 +361,5 @@ export interface ShanshuExpoMapViewProps extends ViewProps {
   onRegionChanged?: (event: {
     nativeEvent: OnRegionChangedEventPayload
   }) => void
+  onTapMarker?: (event: { nativeEvent: OnTapMarkerEventPayload }) => void
 }

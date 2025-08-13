@@ -11,3 +11,14 @@ export interface Coordinate {
    */
   longitude: number
 }
+
+/**
+ * 以特定经纬度为中心的矩形地理区域
+ */
+export interface Region {
+  center: Coordinate
+  span: {
+    latitudeDelta: number
+    longitudeDelta: number
+  }
+}

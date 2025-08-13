@@ -100,14 +100,33 @@ public class ShanshuExpoMapModule: Module {
         }
 
         View(ShanshuExpoMapView.self) {
-            Events("onLoad", "onZoom", "onRegionChanged", "onSelectAnnotation")
+            Events("onLoad", "onZoom", "onRegionChanged", "onTapMarker")
+            
+            Prop("region") { (view, region: Region) in
+                view.setRegion(region, animated: true)
+            }
+            
+            Prop("initialRegion") { (view, region: Region) in
+                guard !view.regionSetted else { return }
+                
+                view.setRegion(region, animated: false)
+                view.regionSetted = true
+            }
+            
+            Prop("limitedRegion") { (view, region: Region) in
+                view.mapView.limitRegion = MACoordinateRegion(center: CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude), span: MACoordinateSpan(latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta))
+            }
 
             Prop("mapType") { (view, mapType: Int) in
-                view.setMapType(mapType)
+                view.mapView.mapType = MAMapType(rawValue: mapType) ?? .standard
+            }
+            
+            Prop("showCompass") { (view, showCompass: Bool) in
+                view.mapView.showsCompass = showCompass
             }
 
             Prop("showUserLocation") { (view, showUserLocation: Bool) in
-                view.setShowUserLocation(showUserLocation)
+                view.mapView.showsUserLocation = showUserLocation
             }
 
             Prop("userTrackingMode") { (view, userTrackingMode: Int) in
@@ -121,6 +140,22 @@ public class ShanshuExpoMapModule: Module {
             Prop("polylines") { (view, segments: [Polyline]) in
                 view.setPolylines(segments)
             }
+            
+            Prop("customStyle") { (view, customStyle: CustomStyle) in
+                view.setCustomStyle(customStyle)
+            }
+            
+            Prop("language") { (view, language: String) in
+                view.setLanguage(language)
+            }
+            
+            Prop("minZoomLevel") { (view, minZoomLevel: Double) in
+                view.mapView.minZoomLevel = minZoomLevel
+            }
+            
+            Prop("maxZoomLevel") { (view, maxZoomLevel: Double) in
+                view.mapView.maxZoomLevel = maxZoomLevel
+            }
 
             AsyncFunction("setCenter") {
                 (view: ShanshuExpoMapView, centerCoordinate: [String: Double], promise: Promise) in
@@ -128,7 +163,7 @@ public class ShanshuExpoMapModule: Module {
             }
 
             AsyncFunction("setZoomLevel") { (view: ShanshuExpoMapView, zoomLevel: Int) in
-                view.setZoomLevel(zoomLevel)
+                view.mapView.setZoomLevel(CGFloat(zoomLevel), animated: true)
             }
         }
     }
