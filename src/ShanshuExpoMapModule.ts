@@ -17,7 +17,7 @@ import {
   SearchTransitRouteOptions,
   SearchWalkingRouteOptions,
   ShanshuExpoMapModuleEvents
-} from './ShanshuExpoMap.types'
+} from './types/index'
 
 declare class ShanshuExpoMapModule extends NativeModule<ShanshuExpoMapModuleEvents> {
   /**

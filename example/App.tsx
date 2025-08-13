@@ -1,97 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { View, Button } from 'react-native'
 import ShanshuExpoMapModule, {
-  Annotation,
   ShanshuExpoMapView,
+  Marker,
+  Polyline,
   type ShanshuExpoMapViewRef
 } from 'shanshu-expo-map'
-
-const exampleAnnotationStyles = [
-  {
-    id: 'style1',
-    image: {
-      url: 'https://qiniu.zdjt.com/shop/2025-07-24/e84b870f7c916a381afe91c974243cb5.jpg',
-      size: {
-        width: 100,
-        height: 30
-      }
-    },
-    textStyle: {
-      color: '#FF0000',
-      fontSize: 20
-    },
-    centerOffset: { x: -50, y: -30 }
-  },
-  {
-    id: 'style2',
-    image: {
-      url: 'https://qiniu.zdjt.com/shop/2025-07-11/561658b79acbc0b3c8350c75b4d3eba0.png',
-      size: {
-        width: 30,
-        height: 30
-      }
-    },
-    textStyle: {
-      color: '#00FF00',
-      fontSize: 20
-    },
-    centerOffset: { x: -15, y: -30 }
-  }
-]
-
-const exampleAnnotations: Annotation[] = [
-  {
-    id: 'annotation1',
-    coordinate: { latitude: 31.230545, longitude: 121.473724 },
-    title: '起点',
-    styleId: 'style1'
-  },
-  {
-    id: 'annotation2',
-    coordinate: { latitude: 31.223257, longitude: 121.471266 },
-    title: '终点',
-    styleId: 'style2'
-  }
-]
-
-const examplePolylineSegments = [
-  {
-    coordinates: [
-      { latitude: 31.230545, longitude: 121.473724 },
-      { latitude: 31.228051, longitude: 121.467568 }
-    ],
-    style: {
-      color: '#FF0000',
-      width: 4,
-      lineDash: false,
-      is3DArrowLine: false
-    }
-  },
-  {
-    coordinates: [
-      { latitude: 31.228051, longitude: 121.467568 },
-      { latitude: 31.223257, longitude: 121.471266 }
-    ],
-    style: {
-      color: '#00FF00',
-      width: 6,
-      lineDash: false,
-      is3DArrowLine: false
-    }
-  },
-  {
-    coordinates: [
-      { latitude: 31.223257, longitude: 121.471266 },
-      { latitude: 31.227265, longitude: 121.479399 }
-    ],
-    style: {
-      color: '#00FF00',
-      width: 6,
-      lineDash: true,
-      is3DArrowLine: false
-    }
-  }
-]
 
 async function getLocation() {
   const location = await ShanshuExpoMapModule.requestLocation()
@@ -112,7 +26,7 @@ async function handleSearchGeocode() {
 async function handleSearchReGeocode() {
   try {
     const result = await ShanshuExpoMapModule.searchReGeocode({
-      location: '31.230545,121.473724',
+      location: { latitude: 31.230545, longitude: 121.473724 },
       radius: 1000,
       poitype: 'bank',
       mode: 'all'
@@ -193,9 +107,6 @@ async function handleSearchTransitRoute() {
 export default function App() {
   const mapViewRef = useRef<ShanshuExpoMapViewRef>(null)
 
-  const [annotations, setAnnotations] = useState(exampleAnnotations)
-  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string>()
-
   return (
     <View style={{ position: 'relative', flex: 1 }}>
       <ShanshuExpoMapView
@@ -204,10 +115,6 @@ export default function App() {
         mapType={0}
         showUserLocation={true}
         userTrackingMode={0}
-        annotationStyles={exampleAnnotationStyles}
-        annotations={annotations}
-        polylineSegments={examplePolylineSegments}
-        selectedAnnotationId={selectedAnnotationId}
         onLoad={(event) => {
           console.log('🗺️ 地图加载成功:', event.nativeEvent)
         }}
@@ -217,11 +124,71 @@ export default function App() {
         onRegionChanged={(event) => {
           console.log('🗺️ 地图区域变化:', event.nativeEvent)
         }}
-        onSelectAnnotation={(event) => {
-          console.log('🗺️ 选中标记点:', event.nativeEvent)
-          setSelectedAnnotationId(event.nativeEvent.id)
-        }}
-      />
+      >
+        <Marker
+          id='marker1'
+          coordinate={{ latitude: 31.230545, longitude: 121.473724 }}
+          title='闪数科技'
+          subtitle='闪数科技'
+          canShowCallout
+          image={{
+            url: 'https://qiniu.zdjt.com/shop/2025-07-24/e84b870f7c916a381afe91c974243cb5.jpg',
+            size: {
+              width: 100,
+              height: 30
+            }
+          }}
+          centerOffset={{
+            x: 0,
+            y: -15
+          }}
+          textStyle={{
+            fontSize: 24,
+            color: '#FF0000'
+          }}
+        />
+        <Marker
+          id='marker2'
+          coordinate={{ latitude: 31.223257, longitude: 121.471266 }}
+          title='闪数科技'
+          subtitle='闪数科技'
+          canAdjustPosition
+        />
+        <Polyline
+          coordinates={[
+            { latitude: 31.230545, longitude: 121.473724 },
+            { latitude: 31.228051, longitude: 121.467568 }
+          ]}
+          style={{
+            strokeColor: '#FF0000',
+            lineWidth: 4,
+            lineDashType: 2
+          }}
+        />
+        <Polyline
+          coordinates={[
+            { latitude: 31.228051, longitude: 121.467568 },
+            { latitude: 31.223257, longitude: 121.471266 }
+          ]}
+          style={{
+            strokeColor: '#00FF00',
+            lineWidth: 6,
+            lineDashType: 1
+          }}
+        />
+        <Polyline
+          coordinates={[
+            { latitude: 31.223257, longitude: 121.471266 },
+            { latitude: 31.227265, longitude: 121.479399 }
+          ]}
+          style={{
+            fillColor: '#FF0000',
+            strokeColor: '#00FF00',
+            lineWidth: 6,
+            lineDashType: 1
+          }}
+        />
+      </ShanshuExpoMapView>
       <View
         style={{
           position: 'absolute',

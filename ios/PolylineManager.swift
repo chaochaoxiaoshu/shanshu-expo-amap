@@ -3,40 +3,37 @@ import MAMapKit
 class PolylineManager {
     private weak var mapView: MAMapView?
     private var polylines: [MAPolyline] = []
-    private var styles: [String: PolylineStyle] = [:]  // key 用 polyline 的唯一 id
-    private var textureCache: [String: UIImage] = [:] // 纹理缓存
+    private var styles: [String: PolylineStyle] = [:]
 
     init(mapView: MAMapView) {
         self.mapView = mapView
     }
 
-    /// 更新折线段
-    func updateSegments(from array: [PolylineSegment]) {
+    func setPolylines(_ polylines: [Polyline]) {
         guard let mapView = mapView else { return }
 
-        // 清理旧的
+        self.polylines.removeAll()
         mapView.removeOverlays(polylines)
-        polylines.removeAll()
         styles.removeAll()
-        textureCache.removeAll()
 
-        // 添加新的
-        for (index, item) in array.enumerated() {
+        for (index, item) in polylines.enumerated() {
             var coordsArray = item.coordinates.map {
                 CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
             }
 
             let polyline: MAPolyline = MAPolyline(
                 coordinates: &coordsArray, count: UInt(coordsArray.count))
-            let polylineId = "segment-\(index)"
+            let polylineId = "polyline-\(index)"
             polyline.title = polylineId
-            polylines.append(polyline)
+            
+            self.polylines.append(polyline)
             styles[polylineId] = item.style
             mapView.add(polyline)
         }
+        
+        print("设置好的 polylines 条数：\(mapView.overlays.count)")
     }
 
-    /// 获取样式
     func styleForPolyline(_ polyline: MAPolyline) -> PolylineStyle? {
         return styles[polyline.title ?? ""]
     }

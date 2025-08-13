@@ -114,20 +114,12 @@ public class ShanshuExpoMapModule: Module {
                 view.setUserTrackingMode(userTrackingMode)
             }
 
-            Prop("annotationStyles") { (view, styles: [AnnotationStyle]) in
-                view.setAnnotationStyles(styles)
+            Prop("markers") { (view, markers: [Marker]) in
+                view.setMarkers(markers)
             }
 
-            Prop("annotations") { (view, annotations: [Annotation]) in
-                view.setAnnotations(annotations)
-            }
-            
-            Prop("selectedAnnotationId") { (view, selectedAnnotationId: String) in
-                view.setSelectedAnnotationId(selectedAnnotationId)
-            }
-
-            Prop("polylineSegments") { (view, segments: [PolylineSegment]) in
-                view.setPolylineSegments(segments)
+            Prop("polylines") { (view, segments: [Polyline]) in
+                view.setPolylines(segments)
             }
 
             AsyncFunction("setCenter") {

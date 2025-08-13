@@ -2,4 +2,5 @@
 // and on native platforms to ShanshuExpoMapModule.ts
 export { default } from './ShanshuExpoMapModule'
 export { default as ShanshuExpoMapView } from './ShanshuExpoMapView'
-export * from './ShanshuExpoMap.types'
+export * from './components'
+export * from './types'

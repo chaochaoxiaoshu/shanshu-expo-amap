@@ -1,16 +1,38 @@
 import { requireNativeView } from 'expo'
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import {
+  Children,
+  forwardRef,
+  ReactElement,
+  useImperativeHandle,
+  useRef
+} from 'react'
+import {
+  Marker,
+  Polyline,
+  type MarkerProps,
+  type PolylineProps
+} from './components'
 import {
   Coordinate,
   ShanshuExpoMapViewProps,
   ShanshuExpoMapViewRef,
   ZoomLevel
-} from './ShanshuExpoMap.types'
+} from './types'
 
 const NativeView = requireNativeView<ShanshuExpoMapViewProps>('ShanshuExpoMap')
 
-export default forwardRef<ShanshuExpoMapViewRef, ShanshuExpoMapViewProps>(
+type WrapperProps = Omit<ShanshuExpoMapViewProps, 'markers' | 'polylines'>
+
+export default forwardRef<ShanshuExpoMapViewRef, WrapperProps>(
   function ShanshuExpoMapView(props, ref) {
+    const { children, ...restProps } = props
+    const markers = Children.toArray(children)
+      .filter((child) => componentIs(child, Marker))
+      .map((child) => child.props) as MarkerProps[]
+    const polylines = Children.toArray(children)
+      .filter((child) => componentIs(child, Polyline))
+      .map((child) => child.props) as PolylineProps[]
+
     const nativeRef = useRef<ShanshuExpoMapViewRef>(null)
 
     useImperativeHandle(
@@ -26,6 +48,25 @@ export default forwardRef<ShanshuExpoMapViewRef, ShanshuExpoMapViewProps>(
       []
     )
 
-    return <NativeView ref={nativeRef} {...props} />
+    return (
+      <NativeView
+        ref={nativeRef}
+        {...restProps}
+        markers={markers}
+        polylines={polylines}
+      />
+    )
   }
 )
+
+function componentIs(
+  component: ReturnType<typeof Children.toArray>[number],
+  type: ReactElement['type']
+): component is ReactElement {
+  return (
+    typeof component === 'object' &&
+    component !== null &&
+    'type' in component &&
+    component.type === type
+  )
+}

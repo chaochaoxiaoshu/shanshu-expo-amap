@@ -328,15 +328,15 @@ extension SearchManager: AMapSearchDelegate {
                 "towncode": response.regeocode.addressComponent.towncode,
                 "township": response.regeocode.addressComponent.township
             ],
-            "aois": response.regeocode.aois.compactMap({ aoi in
+            "aois": response.regeocode.aois?.compactMap({ aoi in
                 [
                     "adcode": aoi.adcode,
                     "name": aoi.name,
                     "type": aoi.type,
                     "uid": aoi.uid
                 ]
-            }),
-            "pois": response.regeocode.pois.compactMap({ aoi in
+            }) ?? [],
+            "pois": response.regeocode.pois?.compactMap({ aoi in
                 [
                     "adcode": aoi.adcode,
                     "address": aoi.address,
@@ -360,8 +360,8 @@ extension SearchManager: AMapSearchDelegate {
                     "uid": aoi.uid,
                     "website": aoi.website
                 ]
-            }),
-            "roadinters": response.regeocode.roadinters.compactMap({ roadInter in
+            }) ?? [],
+            "roadinters": response.regeocode.roadinters?.compactMap({ roadInter in
                 [
                     "direction": roadInter.direction,
                     "firstId": roadInter.firstId,
@@ -369,14 +369,14 @@ extension SearchManager: AMapSearchDelegate {
                     "secondId": roadInter.secondId,
                     "secondName": roadInter.secondName
                 ]
-            }),
-            "roads": response.regeocode.roads.compactMap({ road in
+            }) ?? [],
+            "roads": response.regeocode.roads?.compactMap({ road in
                 [
                     "direction": road.direction,
                     "name": road.name,
                     "uid": road.uid
                 ]
-            })
+            }) ?? []
         ])
     }
 
